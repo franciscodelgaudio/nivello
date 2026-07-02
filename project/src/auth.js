@@ -1,28 +1,30 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 
+import { authConfig } from "@/auth.config";
 import clientPromise from "@/lib/handler/mongodbClient";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    ...authConfig,
     adapter: MongoDBAdapter(clientPromise),
-    providers: [
-        Google({
-            clientId: process.env.GOOGLE_ID,
-            clientSecret: process.env.GOOGLE_SECRET,
-        }),
-    ],
     session: {
-        strategy: "database",
+        strategy: "jwt",
     },
-    pages: {
-        signIn: "/login",
-    },
-    trustHost: true,
     callbacks: {
-        async session({ session, user }) {
-            session.user.id = user.id;
-            session.user.role = user.role ?? "user";
+        ...authConfig.callbacks,
+        async jwt({ token, user }) {
+            if (user) {
+                token.role = user.role ?? "user";
+            }
+
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                session.user.id = token.sub;
+                session.user.role = token.role ?? "user";
+            }
+
             return session;
         },
     },

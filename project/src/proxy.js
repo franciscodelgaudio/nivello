@@ -1,18 +1,10 @@
-import { NextResponse } from "next/server";
+import NextAuth from "next-auth";
 
-import { auth } from "@/auth";
+import { authConfig } from "@/auth.config";
 
-const publicRoutes = ["/", "/login"];
+const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
-    const { nextUrl } = req;
-    const isLoggedIn = !!req.auth;
-    const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
-
-    if (!isLoggedIn && !isPublicRoute) {
-        return NextResponse.redirect(new URL("/login", nextUrl));
-    }
-});
+export default auth;
 
 export const config = {
     matcher: ["/((?!api|_next/static|_next/image|.*\\..*).*)"],
