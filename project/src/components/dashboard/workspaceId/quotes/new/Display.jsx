@@ -1,18 +1,24 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, HardHat, User } from "lucide-react";
 
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export default function Display({ workspaceId, workspaceName, userName, locale = "pt" }) {
+export default function Display({ workspaceId, workspaceName, workspaces, userName, userEmail, locale = "pt" }) {
   const t = getDictionary(locale).quotes.new;
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface-page)]">
-      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="quotes" locale={locale} />
-
-      <main className="flex-1 px-6 py-12 sm:px-10">
+    <DashboardShell
+      workspaceId={workspaceId}
+      workspaceName={workspaceName}
+      workspaces={workspaces}
+      userName={userName}
+      userEmail={userEmail}
+      active="quotes"
+      locale={locale}
+    >
+      <div className="flex-1 px-6 py-12 sm:px-10">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
           {/* Header */}
           <div className="flex flex-col gap-3">
@@ -86,7 +92,7 @@ export default function Display({ workspaceId, workspaceName, userName, locale =
             </Link>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

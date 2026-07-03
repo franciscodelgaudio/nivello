@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { ChevronRight, FileText, HardHat, Plus, UserPlus, Users } from "lucide-react";
 
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export default function Display({ workspaceId, workspaceName, userName, metrics, locale = "pt" }) {
+export default function Display({
+  workspaceId,
+  workspaceName,
+  workspaces,
+  userName,
+  userEmail,
+  metrics,
+  locale = "pt",
+}) {
   const t = getDictionary(locale).dashboard;
 
   const quotesHref = `/workspaces/${workspaceId}/quotes`;
@@ -32,10 +40,16 @@ export default function Display({ workspaceId, workspaceName, userName, metrics,
   ];
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface-page)]">
-      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="painel" locale={locale} />
-
-      <main className="flex-1 px-6 py-8 lg:px-10">
+    <DashboardShell
+      workspaceId={workspaceId}
+      workspaceName={workspaceName}
+      workspaces={workspaces}
+      userName={userName}
+      userEmail={userEmail}
+      active="painel"
+      locale={locale}
+    >
+      <div className="flex-1 px-6 py-8 lg:px-10">
         {/* Header */}
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -101,7 +115,7 @@ export default function Display({ workspaceId, workspaceName, userName, metrics,
             ))}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

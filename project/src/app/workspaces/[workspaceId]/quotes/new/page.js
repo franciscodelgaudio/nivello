@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/quotes/new/Display";
 import { getLocale } from "@/lib/i18n/locale";
-import { Workspaces } from "@/lib/models/Workspace";
+import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
 
 export default async function NewQuotePage({ params }) {
   const session = await auth();
@@ -19,22 +19,27 @@ export default async function NewQuotePage({ params }) {
     notFound();
   }
 
+  const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
-    owner: new mongoose.Types.ObjectId(session.user.id),
+    owner: ownerObjectId,
   }).lean();
 
   if (!workspace) {
     notFound();
   }
 
+  const workspaces = await listWorkspacesForOwner(ownerObjectId);
   const locale = await getLocale();
 
   return (
     <Display
       workspaceId={workspace._id.toString()}
       workspaceName={workspace.name}
+      workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
+      userEmail={session.user.email}
       locale={locale}
     />
   );

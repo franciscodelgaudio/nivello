@@ -7,7 +7,7 @@ export default async function LoginPage() {
   const session = await auth();
 
   if (session?.user) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return (
@@ -20,7 +20,7 @@ export default async function LoginPage() {
           className="w-full"
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: "/dashboard" });
+            await signIn("google", { redirectTo: "/" });
           }}
         >
           <SubmitButton className="w-full">
