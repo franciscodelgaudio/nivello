@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/handler/db";
 import { Works } from "@/lib/models/Work";
 import { Workspaces } from "@/lib/models/Workspace";
 
@@ -22,6 +23,8 @@ const workSchema = z.object({
 export async function createWork(workspaceId, values) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
@@ -47,6 +50,8 @@ export async function updateWork(workspaceId, workId, values) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  await dbConnect();
+
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
     owner: new mongoose.Types.ObjectId(session.user.id),
@@ -71,6 +76,8 @@ export async function updateWork(workspaceId, workId, values) {
 export async function deleteWork(workspaceId, workId) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),

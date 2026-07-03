@@ -1,4 +1,3 @@
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const ClientsSchema = new mongoose.Schema({
@@ -22,7 +21,5 @@ const ClientsSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 })
-
-await dbConnect();
 
 export const Clients = mongoose.models.clients || mongoose.model("clients", ClientsSchema);

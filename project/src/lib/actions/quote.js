@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/handler/db";
 import { Quotes } from "@/lib/models/Quote";
 import { Workspaces } from "@/lib/models/Workspace";
 
@@ -28,6 +29,8 @@ const quoteSchema = z.object({
 export async function createQuote(workspaceId, values) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
@@ -53,6 +56,8 @@ export async function updateQuote(workspaceId, quoteId, values) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  await dbConnect();
+
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
     owner: new mongoose.Types.ObjectId(session.user.id),
@@ -77,6 +82,8 @@ export async function updateQuote(workspaceId, quoteId, values) {
 export async function deleteQuote(workspaceId, quoteId) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/handler/db";
 import Display from "@/components/dashboard/workspaceId/clients/new/Display";
 import { createClient } from "@/lib/actions/client";
 import { getLocale } from "@/lib/i18n/locale";
@@ -21,6 +22,8 @@ export default async function NewClientPage({ params }) {
   }
 
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
