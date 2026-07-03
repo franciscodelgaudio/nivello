@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/Display";
-import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Clients } from "@/lib/models/Client";
 import { Quotes } from "@/lib/models/Quote";
@@ -18,8 +17,6 @@ export default async function DashboardPage() {
   }
 
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
-
-  await dbConnect();
 
   let workspace = await Workspaces.findOne({ owner: ownerObjectId }).lean();
 

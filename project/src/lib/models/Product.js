@@ -1,3 +1,4 @@
+import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const ProductsSchema = new mongoose.Schema({
@@ -33,5 +34,7 @@ const ProductsSchema = new mongoose.Schema({
         required: true,
     },
 })
+
+await dbConnect();
 
 export const Products = mongoose.models.products || mongoose.model("products", ProductsSchema);

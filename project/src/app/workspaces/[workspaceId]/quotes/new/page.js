@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/quotes/new/Display";
-import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Workspaces } from "@/lib/models/Workspace";
 
@@ -19,8 +18,6 @@ export default async function NewQuotePage({ params }) {
   if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
     notFound();
   }
-
-  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),

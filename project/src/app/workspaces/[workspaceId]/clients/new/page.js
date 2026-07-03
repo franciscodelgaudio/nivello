@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/clients/new/Display";
-import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Clients } from "@/lib/models/Client";
 import { Workspaces } from "@/lib/models/Workspace";
@@ -29,8 +28,6 @@ export default async function NewClientPage({ params, searchParams }) {
     notFound();
   }
 
-  await dbConnect();
-
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),
     owner: new mongoose.Types.ObjectId(session.user.id),
@@ -47,8 +44,6 @@ export default async function NewClientPage({ params, searchParams }) {
     if (!actionSession?.user) {
       redirect("/login");
     }
-
-    await dbConnect();
 
     const actionWorkspace = await Workspaces.findOne({
       _id: new mongoose.Types.ObjectId(workspaceId),
