@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -23,9 +23,9 @@ export default async function LoginPage() {
             await signIn("google", { redirectTo: "/dashboard" });
           }}
         >
-          <Button type="submit" className="w-full">
+          <SubmitButton className="w-full">
             Entrar com Google
-          </Button>
+          </SubmitButton>
         </form>
       </div>
     </div>
