@@ -6,10 +6,13 @@ FROM node:24-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# --- Install dependencies (from the lockfile) ---
+# --- Install dependencies ---
+# `npm install` (not `npm ci`): the lockfile is generated on Windows and can
+# miss Linux-only optional deps of sharp (@emnapi/*), which makes `npm ci`
+# refuse to install. `npm install` respects the lock and fills the gaps.
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # --- Build the Next.js app ---
 FROM base AS builder

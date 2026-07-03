@@ -21,7 +21,9 @@ jobs:
           cache: npm
           cache-dependency-path: project/package-lock.json
 
-      - run: npm ci
+      # npm install (not npm ci): the lockfile is generated on Windows and can
+      # miss Linux-only optional deps of sharp (@emnapi/*).
+      - run: npm install --no-audit --no-fund
 
       - run: npm run lint
 
