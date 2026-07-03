@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
 
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,9 @@ function buildHref(workspaceId, params, overrides = {}) {
 export default function Display({
   workspaceId,
   workspaceName,
+  workspaces,
   userName,
+  userEmail,
   quotes,
   pagination,
   search,
@@ -52,10 +54,16 @@ export default function Display({
   ];
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface-page)]">
-      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="quotes" locale={locale} />
-
-      <main className="flex-1 px-6 py-8 lg:px-10">
+    <DashboardShell
+      workspaceId={workspaceId}
+      workspaceName={workspaceName}
+      workspaces={workspaces}
+      userName={userName}
+      userEmail={userEmail}
+      active="quotes"
+      locale={locale}
+    >
+      <div className="flex-1 px-6 py-8 lg:px-10">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-[28px] font-bold tracking-[-0.015em] text-[var(--text-strong)]">{t.title}</h1>
@@ -194,7 +202,7 @@ export default function Display({
             </div>
           </div>
         ) : null}
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

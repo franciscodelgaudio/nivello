@@ -6,7 +6,7 @@ import Display from "@/components/dashboard/Display";
 import { getLocale } from "@/lib/i18n/locale";
 import { Clients } from "@/lib/models/Client";
 import { Quotes } from "@/lib/models/Quote";
-import { Workspaces } from "@/lib/models/Workspace";
+import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
 import { Works } from "@/lib/models/Work";
 
 export default async function Page({ params }) {
@@ -43,13 +43,16 @@ export default async function Page({ params }) {
     Clients.countDocuments({ workspaceId: workspaceObjectId }),
   ]);
 
+  const workspaces = await listWorkspacesForOwner(ownerObjectId);
   const locale = await getLocale();
 
   return (
     <Display
       workspaceId={workspace._id.toString()}
       workspaceName={workspace.name}
+      workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
+      userEmail={session.user.email}
       metrics={{
         quotesThisMonth,
         activeWorks,

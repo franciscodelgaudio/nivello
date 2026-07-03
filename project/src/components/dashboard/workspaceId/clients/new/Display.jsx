@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertCircle, UserPlus } from "lucide-react";
 
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
@@ -20,14 +20,29 @@ function Field({ label, name, placeholder, type = "text" }) {
   );
 }
 
-export default function Display({ workspaceId, workspaceName, userName, createClient, error, locale = "pt" }) {
+export default function Display({
+  workspaceId,
+  workspaceName,
+  workspaces,
+  userName,
+  userEmail,
+  createClient,
+  error,
+  locale = "pt",
+}) {
   const t = getDictionary(locale).clientsNew;
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface-page)]">
-      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="clients" locale={locale} />
-
-      <main className="flex-1 px-6 py-12 sm:px-10">
+    <DashboardShell
+      workspaceId={workspaceId}
+      workspaceName={workspaceName}
+      workspaces={workspaces}
+      userName={userName}
+      userEmail={userEmail}
+      active="clients"
+      locale={locale}
+    >
+      <div className="flex-1 px-6 py-12 sm:px-10">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
           {/* Header */}
           <div className="flex flex-col gap-3">
@@ -72,7 +87,7 @@ export default function Display({ workspaceId, workspaceName, userName, createCl
             </form>
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

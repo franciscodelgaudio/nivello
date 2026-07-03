@@ -5,6 +5,9 @@ const dictionaries = {
   pt: {
     sidebar: {
       nav: { painel: "Painel", quotes: "Orçamentos", works: "Obras", clients: "Clientes" },
+      workspaces: { label: "Workspaces", viewAll: "Ver todos os workspaces" },
+      theme: { label: "Tema", light: "Claro", dark: "Escuro", system: "Sistema" },
+      language: { label: "Idioma" },
       signOut: "Sair",
     },
     dashboard: {
@@ -119,6 +122,9 @@ const dictionaries = {
   es: {
     sidebar: {
       nav: { painel: "Panel", quotes: "Presupuestos", works: "Obras", clients: "Clientes" },
+      workspaces: { label: "Workspaces", viewAll: "Ver todos los workspaces" },
+      theme: { label: "Tema", light: "Claro", dark: "Oscuro", system: "Sistema" },
+      language: { label: "Idioma" },
       signOut: "Cerrar sesión",
     },
     dashboard: {

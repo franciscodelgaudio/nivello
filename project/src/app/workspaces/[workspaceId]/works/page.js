@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/works/Display";
 import { getLocale } from "@/lib/i18n/locale";
-import { Workspaces } from "@/lib/models/Workspace";
+import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
 import { Works } from "@/lib/models/Work";
 
 const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_PAGE_SIZE, 10) || 20;
@@ -214,13 +214,16 @@ export default async function Page({ searchParams, params }) {
   const facet = aggregationResult[0].data;
   const works = JSON.parse(JSON.stringify(facet));
 
+  const workspaces = await listWorkspacesForOwner(ownerObjectId);
   const locale = await getLocale();
 
   return (
     <Display
       workspaceId={workspace._id.toString()}
       workspaceName={workspace.name}
+      workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
+      userEmail={session.user.email}
       works={works}
       pagination={{
         page: currentPage,
