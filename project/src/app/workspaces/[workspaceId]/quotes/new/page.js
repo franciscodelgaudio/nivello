@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/handler/db";
 import Display from "@/components/dashboard/workspaceId/quotes/new/Display";
 import { getLocale } from "@/lib/i18n/locale";
 import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
@@ -20,6 +21,8 @@ export default async function NewQuotePage({ params }) {
   }
 
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: new mongoose.Types.ObjectId(workspaceId),

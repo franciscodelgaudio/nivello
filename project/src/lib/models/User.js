@@ -1,4 +1,3 @@
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const UsersSchema = new mongoose.Schema({
@@ -25,7 +24,5 @@ const UsersSchema = new mongoose.Schema({
         default: "user",
     },
 })
-
-await dbConnect();
 
 export const Users = mongoose.models.users || mongoose.model("users", UsersSchema);

@@ -1,16 +1,18 @@
 import { MongoClient } from "mongodb";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+// Lazily create a (non-connected) MongoClient. Reading the env and creating the
+// client happens on first use (a request), never at import/build time — the
+// MongoDB team recommends passing a non-connected client to the Auth.js adapter.
+export function getMongoClient() {
+    if (!globalThis._mongoClient) {
+        const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-    throw new Error("Missing MONGODB_URI environment variable");
+        if (!MONGODB_URI) {
+            throw new Error("Missing MONGODB_URI environment variable");
+        }
+
+        globalThis._mongoClient = new MongoClient(MONGODB_URI);
+    }
+
+    return globalThis._mongoClient;
 }
-
-let clientPromise = globalThis._mongoClientPromise;
-
-if (!clientPromise) {
-    const client = new MongoClient(MONGODB_URI);
-    clientPromise = globalThis._mongoClientPromise = client.connect();
-}
-
-export default clientPromise;

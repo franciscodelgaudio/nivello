@@ -27,11 +27,11 @@ const WorkspacesSchema = new mongoose.Schema(
     }
 );
 
-await dbConnect();
-
 export const Workspaces = mongoose.models.workspaces || mongoose.model("workspaces", WorkspacesSchema);
 
 export async function listWorkspacesForOwner(ownerObjectId) {
+    await dbConnect();
+
     const workspaces = await Workspaces.find({ owner: ownerObjectId })
         .select("_id name")
         .sort({ createdAt: 1 })

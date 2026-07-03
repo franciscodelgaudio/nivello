@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import mongoose from "mongoose";
 
 import { auth } from "@/auth";
+import { dbConnect } from "@/lib/handler/db";
 import { Workspaces } from "@/lib/models/Workspace";
 
 export default async function RootPage() {
@@ -12,6 +13,8 @@ export default async function RootPage() {
   }
 
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   let workspace = await Workspaces.findOne({ owner: ownerObjectId }).lean();
 
