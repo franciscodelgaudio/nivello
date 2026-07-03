@@ -224,6 +224,7 @@ export default async function Page({ searchParams, params }) {
       workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
       userEmail={session.user.email}
+      userRole={session.user.role}
       works={works}
       pagination={{
         page: currentPage,

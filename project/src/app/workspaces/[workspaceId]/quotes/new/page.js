@@ -40,6 +40,7 @@ export default async function NewQuotePage({ params }) {
       workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
       userEmail={session.user.email}
+      userRole={session.user.role}
       locale={locale}
     />
   );

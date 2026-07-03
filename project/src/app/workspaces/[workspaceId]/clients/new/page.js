@@ -87,6 +87,7 @@ export default async function NewClientPage({ params, searchParams }) {
       workspaces={workspaces}
       userName={session.user.name ?? session.user.email}
       userEmail={session.user.email}
+      userRole={session.user.role}
       createClient={createClient}
       error={typeof error === "string" ? error : ""}
       locale={locale}

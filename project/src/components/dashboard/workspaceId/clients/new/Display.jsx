@@ -26,6 +26,7 @@ export default function Display({
   workspaces,
   userName,
   userEmail,
+  userRole,
   createClient,
   error,
   locale = "pt",
@@ -39,6 +40,7 @@ export default function Display({
       workspaces={workspaces}
       userName={userName}
       userEmail={userEmail}
+      userRole={userRole}
       active="clients"
       locale={locale}
     >

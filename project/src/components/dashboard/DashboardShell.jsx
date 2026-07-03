@@ -7,6 +7,7 @@ export function DashboardShell({
   workspaces,
   userName,
   userEmail,
+  userRole,
   active,
   locale,
   children,
@@ -19,6 +20,7 @@ export function DashboardShell({
         workspaces={workspaces}
         userName={userName}
         userEmail={userEmail}
+        userRole={userRole}
         active={active}
         locale={locale}
       />

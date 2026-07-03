@@ -11,6 +11,7 @@ export default function Display({
   workspaces,
   userName,
   userEmail,
+  userRole,
   metrics,
   locale = "pt",
 }) {
@@ -46,6 +47,7 @@ export default function Display({
       workspaces={workspaces}
       userName={userName}
       userEmail={userEmail}
+      userRole={userRole}
       active="painel"
       locale={locale}
     >

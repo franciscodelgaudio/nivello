@@ -43,6 +43,7 @@ export default function Display({
   workspaces,
   userName,
   userEmail,
+  userRole,
   works,
   pagination,
   search,
@@ -68,6 +69,7 @@ export default function Display({
       workspaces={workspaces}
       userName={userName}
       userEmail={userEmail}
+      userRole={userRole}
       active="works"
       locale={locale}
     >

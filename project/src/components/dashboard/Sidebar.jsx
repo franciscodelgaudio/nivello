@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, HardHat, LayoutGrid, Users } from "lucide-react";
+import { FileText, HardHat, LayoutGrid, ShieldCheck, Users } from "lucide-react";
 
 import { UserMenu } from "@/components/dashboard/UserMenu";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
@@ -23,6 +23,7 @@ export function AppSidebar({
   workspaces = [],
   userName,
   userEmail,
+  userRole,
   active,
   locale = "pt",
 }) {
@@ -34,6 +35,10 @@ export function AppSidebar({
     { key: "works", href: `/workspaces/${workspaceId}/works`, label: t.sidebar.nav.works, icon: HardHat },
     { key: "clients", href: `/workspaces/${workspaceId}/clients`, label: t.sidebar.nav.clients, icon: Users },
   ];
+
+  if (userRole === "admin") {
+    navItems.push({ key: "admin", href: "/admin/users", label: t.sidebar.manageUsers, icon: ShieldCheck });
+  }
 
   return (
     <Sidebar collapsible="icon">

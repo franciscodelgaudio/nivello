@@ -5,7 +5,15 @@ import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
-export default function Display({ workspaceId, workspaceName, workspaces, userName, userEmail, locale = "pt" }) {
+export default function Display({
+  workspaceId,
+  workspaceName,
+  workspaces,
+  userName,
+  userEmail,
+  userRole,
+  locale = "pt",
+}) {
   const t = getDictionary(locale).quotes.new;
 
   return (
@@ -15,6 +23,7 @@ export default function Display({ workspaceId, workspaceName, workspaces, userNa
       workspaces={workspaces}
       userName={userName}
       userEmail={userEmail}
+      userRole={userRole}
       active="quotes"
       locale={locale}
     >
