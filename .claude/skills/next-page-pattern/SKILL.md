@@ -25,12 +25,13 @@ Use this pattern for list pages and dashboard-like resource pages scoped to a wo
 Follow this order:
 
 1. Import `z` from `zod`, `mongoose`, and `notFound`/`redirect` from `next/navigation`.
-2. Import `auth` from `@/auth`, the resource `Display`, and models from `@/lib/models/<Name>`.
+2. Import `auth` from `@/auth`, the resource `Display`, `dbConnect` from `@/lib/handler/db`, and models from `@/lib/models/<Name>`.
 3. Define constants near the top: `PAGE_SIZE`, allowed order values, allowed directions, and any filter enums (e.g. status values).
 4. Define `querySchema` with Zod for `search`, `page`, `order`, `direction`, and resource filters. Escape regex metacharacters in `search` via a `.transform()`.
 5. In `Page({ searchParams, params })`:
    - `const session = await auth();` — `redirect("/login")` if there is no `session?.user`.
    - `await params` to get route ids; validate each id with `mongoose.Types.ObjectId.isValid(...)`, calling `notFound()` if invalid.
+   - `await dbConnect();` right before the first model query — never at module scope (see "Database connection" below).
    - Load the workspace scoped to the authenticated user, e.g. `Workspaces.findOne({ _id: workspaceObjectId, owner: ownerObjectId }).lean()`, and `notFound()` if it doesn't exist — this is what enforces access control, so never skip it.
    - `querySchema.safeParse(await searchParams)`; return `notFound()` if parsing fails.
    - Build a `matchCondition` object combining the workspace scope with `$and` blocks for search terms (`$regex`/`$options: "i"` on relevant fields) and any filter enums, only when those arrays are non-empty.
@@ -40,6 +41,12 @@ Follow this order:
    - Derive `totalCount`/`totalPages` from the `count` facet, clamping `currentPage` down to `totalPages` when it overshoots.
    - Serialize the `data` facet (`JSON.parse(JSON.stringify(...))` or `.lean()` plus manual `.toString()` on ids) before passing to the client component.
    - Return `<Display />` with the serialized data, ids as strings, and a `pagination` object (`page`, `totalPages`, `totalCount`, `hasNextPage`, `hasPrevPage`), plus `order`/`direction`/filter values as needed.
+
+## Database connection
+
+- Model files never call `dbConnect()` themselves (see `.claude/skills/mongoose-model/SKILL.md`) — they only define the schema. Every server page, layout, or server action that queries a model must call `await dbConnect();` itself, right before the first query.
+- Never call `dbConnect()` at module top level (no top-level `await` in `page.js`). Next.js imports page modules while collecting page data at build time; a top-level DB call there runs for real against production infra during the build and can fail the whole deploy if that network path isn't reachable (e.g. build runners aren't on the DB's IP allowlist).
+- If the page defines an inline `"use server"` action that queries models, call `await dbConnect();` again as the first statement inside that action — it runs as a separate invocation from the page render. `dbConnect()` is cheap to call repeatedly (the connection is cached on `global.mongoose`).
 
 ## Display component
 
@@ -59,6 +66,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/resource/Display";
+import { dbConnect } from "@/lib/handler/db";
 import { Resources } from "@/lib/models/Resource";
 import { Workspaces } from "@/lib/models/Workspace";
 
@@ -95,6 +103,8 @@ export default async function Page({ searchParams, params }) {
 
   const workspaceObjectId = new mongoose.Types.ObjectId(workspaceId);
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: workspaceObjectId,

@@ -1,4 +1,3 @@
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const WorkspacesSchema = new mongoose.Schema(
@@ -26,7 +25,5 @@ const WorkspacesSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
-
-await dbConnect();
 
 export const Workspaces = mongoose.models.workspaces || mongoose.model("workspaces", WorkspacesSchema);

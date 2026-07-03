@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaces/Display";
+import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Workspaces } from "@/lib/models/Workspace";
 
@@ -84,6 +85,8 @@ export default async function Page({ searchParams }) {
     createdAt: { createdAt: dir },
   };
   const sortBy = sortOptions[order];
+
+  await dbConnect();
 
   const aggregationResult = await Workspaces.aggregate([
     { $match: matchCondition },

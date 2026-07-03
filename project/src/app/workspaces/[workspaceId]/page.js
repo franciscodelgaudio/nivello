@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/Display";
+import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Clients } from "@/lib/models/Client";
 import { Quotes } from "@/lib/models/Quote";
@@ -24,6 +25,8 @@ export default async function Page({ params }) {
 
   const workspaceObjectId = new mongoose.Types.ObjectId(workspaceId);
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: workspaceObjectId,

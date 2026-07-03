@@ -1,4 +1,3 @@
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const QuotesSchema = new mongoose.Schema({
@@ -34,7 +33,5 @@ const QuotesSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 })
-
-await dbConnect();
 
 export const Quotes = mongoose.models.quotes || mongoose.model("quotes", QuotesSchema);

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import Display from "@/components/dashboard/workspaceId/quotes/Display";
+import { dbConnect } from "@/lib/handler/db";
 import { getLocale } from "@/lib/i18n/locale";
 import { Quotes } from "@/lib/models/Quote";
 import { Workspaces } from "@/lib/models/Workspace";
@@ -54,6 +55,8 @@ export default async function Page({ searchParams, params }) {
 
   const workspaceObjectId = new mongoose.Types.ObjectId(workspaceId);
   const ownerObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  await dbConnect();
 
   const workspace = await Workspaces.findOne({
     _id: workspaceObjectId,

@@ -1,6 +1,6 @@
 ---
 name: mongoose-model
-description: Cria arquivos de model do Mongoose seguindo o padrão do projeto (dbConnect, mongoose.models singleton, sub-schemas). Use quando o usuário pedir para criar/adicionar um novo model, schema ou coleção do Mongoose/MongoDB.
+description: Cria arquivos de model do Mongoose seguindo o padrão do projeto (mongoose.models singleton, sub-schemas, sem dbConnect no model). Use quando o usuário pedir para criar/adicionar um novo model, schema ou coleção do Mongoose/MongoDB.
 ---
 
 # Mongoose Model
@@ -17,34 +17,35 @@ Gera um novo arquivo de model do Mongoose seguindo exatamente o padrão já esta
 ## Estrutura obrigatória do arquivo
 
 ```js
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const NomeSchema = new mongoose.Schema({
     // campos
 });
 
-await dbConnect();
-
 export const Nome = mongoose.models.nome || mongoose.model("nome", NomeSchema);
 ```
 
 Regras:
-1. Sempre importar `dbConnect` de `@/lib/handler/db` e `mongoose` — nesta ordem.
-2. Sempre chamar `await dbConnect();` antes do `export const`.
-3. Sempre registrar o model com o padrão `mongoose.models.<nome> || mongoose.model("<nome>", <Nome>Schema)` para evitar erro de "Cannot overwrite model" em hot reload.
-4. Se o schema tiver sub-objetos repetidos, com validação própria, ou reutilizados em mais de um lugar, extraia-os em `mongoose.Schema` separados e definidos ANTES do schema principal (ex. `DependenciesSchema`, `ProgressSchema` abaixo). Sub-objetos simples e usados uma única vez podem ficar inline (ex. o campo `start` no exemplo).
-5. Referências para outros documentos usam `type: mongoose.Schema.Types.ObjectId` + `ref: "<nome-plural-da-coleção>"`.
-6. Campos com um conjunto fixo de valores usam `enum: [...]` com strings em minúsculo.
-7. Comente apenas o que não é óbvio pelo nome do campo: uma regra de negócio, uma decisão de compatibilidade retroativa, um motivo pelo qual um valor não é recalculado, etc. Escreva o comentário em português, curto, acima do campo. Não descreva o óbvio (ex. não comente `required: true`).
-8. Não adicione validação, defaults ou opções que não foram pedidos — siga só o que o pattern e o pedido do usuário exigem.
+1. Importar só `mongoose` — o model NUNCA importa nem chama `dbConnect`.
+2. Sempre registrar o model com o padrão `mongoose.models.<nome> || mongoose.model("<nome>", <Nome>Schema)` para evitar erro de "Cannot overwrite model" em hot reload.
+3. Se o schema tiver sub-objetos repetidos, com validação própria, ou reutilizados em mais de um lugar, extraia-os em `mongoose.Schema` separados e definidos ANTES do schema principal (ex. `DependenciesSchema`, `ProgressSchema` abaixo). Sub-objetos simples e usados uma única vez podem ficar inline (ex. o campo `start` no exemplo).
+4. Referências para outros documentos usam `type: mongoose.Schema.Types.ObjectId` + `ref: "<nome-plural-da-coleção>"`.
+5. Campos com um conjunto fixo de valores usam `enum: [...]` com strings em minúsculo.
+6. Comente apenas o que não é óbvio pelo nome do campo: uma regra de negócio, uma decisão de compatibilidade retroativa, um motivo pelo qual um valor não é recalculado, etc. Escreva o comentário em português, curto, acima do campo. Não descreva o óbvio (ex. não comente `required: true`).
+7. Não adicione validação, defaults ou opções que não foram pedidos — siga só o que o pattern e o pedido do usuário exigem.
+
+## Por que o model NÃO chama dbConnect()
+
+Um model que faz `await dbConnect()` no top level do módulo conecta de verdade ao banco assim que o arquivo é importado — inclusive quando o Next.js importa `page.js` durante o build (etapa "Collecting page data") só para inspecionar a rota. Isso já derrubou build na Cloudflare Pages com `MongoServerSelectionError`/SSL alert, porque a máquina de build tentava abrir uma conexão real com o Atlas.
+
+A conexão é responsabilidade de quem vai USAR o model (página, server action, route handler), chamada explicitamente com `await dbConnect();` logo antes da primeira query — nunca no import do model. Veja a seção "Database connection" em `.claude/skills/next-page-pattern/SKILL.md`.
 
 ## Exemplo de referência (padrão real do projeto)
 
 `src/lib/models/Action.js`:
 
 ```js
-import { dbConnect } from "@/lib/handler/db";
 import mongoose from "mongoose";
 
 const DependenciesSchema = new mongoose.Schema({
@@ -198,8 +199,6 @@ const ActionsSchema = new mongoose.Schema({
         default: null,
     },
 })
-
-await dbConnect();
 
 export const Actions = mongoose.models.actions || mongoose.model("actions", ActionsSchema);
 ```
