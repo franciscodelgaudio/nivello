@@ -1,73 +1,37 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import mongoose from "mongoose";
+import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { Button } from "@/components/ui/button";
+import Display from "@/components/dashboard/workspaceId/quotes/new/Display";
+import { Workspaces } from "@/lib/models/Workspace";
 
 export default async function NewQuotePage({ params }) {
   const session = await auth();
-  const { workspaceId } = await params;
 
   if (!session?.user) {
     redirect("/login");
   }
 
+  const { workspaceId } = await params;
+
+  if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
+    notFound();
+  }
+
+  const workspace = await Workspaces.findOne({
+    _id: new mongoose.Types.ObjectId(workspaceId),
+    owner: new mongoose.Types.ObjectId(session.user.id),
+  }).lean();
+
+  if (!workspace) {
+    notFound();
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 text-black dark:bg-black dark:text-zinc-50">
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-16 sm:px-10">
-        <section className="rounded-2xl border border-black/[.08] bg-white p-8 shadow-sm dark:border-white/[.08] dark:bg-zinc-950">
-          <div className="flex flex-col gap-4">
-            <p className="text-sm uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-              Novo orcamento
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
-              Criar orcamento de obra
-            </h1>
-            <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-400">
-              Espaco inicial para cadastrar um novo orcamento de obra. Adicione clientes, itens,
-              prazos e detalhes da execucao conforme o projeto evolui.
-            </p>
-          </div>
-
-          <div className="mt-10 space-y-6">
-            <div className="rounded-2xl bg-zinc-100 p-6 dark:bg-white/5">
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
-                Passos sugeridos
-              </h2>
-              <ul className="mt-4 space-y-3 text-zinc-600 dark:text-zinc-400">
-                <li>Escolher cliente e obra</li>
-                <li>Definir tipo de servico e materiais</li>
-                <li>Inserir prazos, custos e observacoes</li>
-                <li>Salvar orcamento e compartilhar com a equipe</li>
-              </ul>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-black/[.08] bg-white p-6 dark:border-white/[.08] dark:bg-zinc-950">
-                <h3 className="text-lg font-semibold text-black dark:text-zinc-50">Cliente</h3>
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  Selecione o cliente ou cadastre um novo para associar ao orcamento.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-black/[.08] bg-white p-6 dark:border-white/[.08] dark:bg-zinc-950">
-                <h3 className="text-lg font-semibold text-black dark:text-zinc-50">
-                  Detalhes da obra
-                </h3>
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  Defina o tipo de obra, local e prazo inicial para o orcamento.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button render={<Link href={`/workspaces/${workspaceId}/quotes`} />}>
-              Voltar para orcamentos
-            </Button>
-            <Button variant="outline">Iniciar criacao</Button>
-          </div>
-        </section>
-      </main>
-    </div>
+    <Display
+      workspaceId={workspace._id.toString()}
+      workspaceName={workspace.name}
+      userName={session.user.name ?? session.user.email}
+    />
   );
 }

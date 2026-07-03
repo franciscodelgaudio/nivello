@@ -8,7 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default:
+          "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_12%)]",
+        dark:
+          "bg-[var(--neutral-900)] text-white hover:bg-[var(--neutral-800)]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -44,13 +47,20 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  asChild = false,
+  render,
+  children,
   ...props
 }) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
-      {...props} />
+      render={asChild ? children : render}
+      {...props}
+    >
+      {asChild ? undefined : children}
+    </ButtonPrimitive>
   );
 }
 

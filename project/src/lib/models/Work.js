@@ -33,6 +33,8 @@ const WorksSchema = new mongoose.Schema({
         ref: "clients",
         required: true,
     },
+}, {
+    timestamps: true,
 })
 
 await dbConnect();

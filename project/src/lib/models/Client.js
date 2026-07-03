@@ -19,6 +19,8 @@ const ClientsSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+}, {
+    timestamps: true,
 })
 
 await dbConnect();

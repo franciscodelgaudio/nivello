@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, HardHat, Search } from "lucide-react";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,23 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 });
 
 const FILTERS = [
-  { value: "all", label: "Todos" },
-  { value: "month", label: "Este mês" },
+  { value: "all", label: "Todas" },
+  { value: "active", label: "Em andamento" },
+  { value: "late", label: "Atrasadas" },
+  { value: "planned", label: "Planejadas" },
 ];
+
+const STATUS_LABEL = {
+  planned: "Planejada",
+  active: "Em andamento",
+  late: "Atrasada",
+};
+
+const STATUS_CLASSES = {
+  planned: "bg-[var(--work-planned-bg)] text-[var(--work-planned)]",
+  active: "bg-[var(--work-active-bg)] text-[var(--work-active)]",
+  late: "bg-[var(--work-late-bg)] text-[var(--work-late)]",
+};
 
 function buildHref(workspaceId, params, overrides = {}) {
   const query = new URLSearchParams();
@@ -31,14 +45,14 @@ function buildHref(workspaceId, params, overrides = {}) {
   });
 
   const queryString = query.toString();
-  return `/workspaces/${workspaceId}/quotes${queryString ? `?${queryString}` : ""}`;
+  return `/workspaces/${workspaceId}/works${queryString ? `?${queryString}` : ""}`;
 }
 
 export default function Display({
   workspaceId,
   workspaceName,
   userName,
-  quotes,
+  works,
   pagination,
   search,
   order,
@@ -49,15 +63,15 @@ export default function Display({
 
   return (
     <div className="flex min-h-screen bg-[var(--surface-page)]">
-      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="quotes" />
+      <Sidebar workspaceId={workspaceId} workspaceName={workspaceName} userName={userName} active="works" />
 
       <main className="flex-1 px-6 py-8 lg:px-10">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-[28px] font-bold tracking-[-0.015em] text-[var(--text-strong)]">Orçamentos</h1>
+          <h1 className="text-[28px] font-bold tracking-[-0.015em] text-[var(--text-strong)]">Obras</h1>
           <div className="flex flex-1 items-center gap-3 sm:justify-end">
             <form
-              action={`/workspaces/${workspaceId}/quotes`}
+              action={`/workspaces/${workspaceId}/works`}
               className="w-full max-w-xs"
             >
               <div className="relative">
@@ -66,7 +80,7 @@ export default function Display({
                   type="search"
                   name="search"
                   defaultValue={search}
-                  placeholder="Buscar orçamento..."
+                  placeholder="Buscar obra..."
                   className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] pl-9 pr-3 text-sm text-[var(--text-strong)] outline-none transition placeholder:text-[var(--text-subtle)] focus:border-[var(--teal-500)] focus:ring-2 focus:ring-[var(--teal-500)]/20"
                 />
               </div>
@@ -75,7 +89,7 @@ export default function Display({
               <input type="hidden" name="filter" value={filter} />
             </form>
             <Button asChild variant="dark">
-              <Link href={`/workspaces/${workspaceId}/quotes/new`}>+ Novo orçamento</Link>
+              <Link href="#">+ Nova obra</Link>
             </Button>
           </div>
         </div>
@@ -101,63 +115,63 @@ export default function Display({
             })}
           </div>
           <p className="text-sm text-[var(--text-muted)]">
-            {pagination.totalCount} {pagination.totalCount === 1 ? "orçamento" : "orçamentos"}
+            {pagination.totalCount} {pagination.totalCount === 1 ? "obra" : "obras"}
           </p>
         </div>
 
         {/* Content */}
         <section className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[var(--shadow-sm)]">
-          {quotes.length === 0 ? (
+          {works.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-8 py-20 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--neutral-100)]">
-                <FileText className="h-6 w-6 text-[var(--text-subtle)]" strokeWidth={1.75} />
+                <HardHat className="h-6 w-6 text-[var(--text-subtle)]" strokeWidth={1.75} />
               </div>
               <p className="text-lg font-semibold text-[var(--text-strong)]">
-                Nenhum orçamento por aqui ainda
+                Nenhuma obra por aqui ainda
               </p>
               <p className="max-w-sm text-sm text-[var(--text-muted)]">
-                Crie o primeiro orçamento deste workspace para começar a acompanhar obras e clientes.
+                Obras cadastradas neste workspace vão aparecer aqui.
               </p>
-              <Button asChild className="mt-4" variant="dark">
-                <Link href={`/workspaces/${workspaceId}/quotes/new`}>+ Criar orçamento</Link>
-              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)] text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-                    <th className="px-6 py-4">Orçamento</th>
-                    <th className="px-6 py-4">Cliente</th>
                     <th className="px-6 py-4">Obra</th>
-                    <th className="px-6 py-4">Itens</th>
-                    <th className="px-6 py-4 text-right">Total</th>
-                    <th className="px-6 py-4">Criado em</th>
+                    <th className="px-6 py-4">Cliente</th>
+                    <th className="px-6 py-4">Local</th>
+                    <th className="px-6 py-4">Prazo</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {quotes.map((quote) => (
+                  {works.map((work) => (
                     <tr
-                      key={quote._id}
+                      key={work._id}
                       className="border-b border-[var(--border-subtle)] transition last:border-0 hover:bg-[var(--surface-hover)]"
                     >
-                      <td className="px-6 py-4 font-semibold text-[var(--text-strong)]">
-                        {quote.name}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--terra-50)] text-[var(--terra-600)]">
+                            <HardHat className="h-4 w-4" strokeWidth={1.75} />
+                          </div>
+                          <span className="font-semibold text-[var(--text-strong)]">{work.name}</span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-[var(--text-body)]">
-                        {quote.client?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-[var(--text-body)]">
-                        {quote.work?.name || "-"}
-                      </td>
+                      <td className="px-6 py-4 text-[var(--text-body)]">{work.client?.name || "-"}</td>
+                      <td className="px-6 py-4 text-[var(--text-body)]">{work.address}</td>
                       <td className="px-6 py-4 font-mono tabular-nums text-[var(--text-body)]">
-                        {quote.itemCount}
+                        {work.deadline ? dateFormatter.format(new Date(work.deadline)) : "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CLASSES[work.status]}`}>
+                          {STATUS_LABEL[work.status] ?? work.status}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right font-mono font-medium tabular-nums text-[var(--text-strong)]">
-                        {currencyFormatter.format(quote.total ?? 0)}
-                      </td>
-                      <td className="px-6 py-4 text-[var(--text-body)]">
-                        {quote.createdAt ? dateFormatter.format(new Date(quote.createdAt)) : "-"}
+                        {currencyFormatter.format(work.totalValue ?? 0)}
                       </td>
                     </tr>
                   ))}

@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import Display from "@/components/dashboard/workspaceId/quotes/Display";
-import { Quotes } from "@/lib/models/Quote";
+import Display from "@/components/dashboard/workspaceId/clients/Display";
+import { Clients } from "@/lib/models/Client";
 import { Workspaces } from "@/lib/models/Workspace";
 
 const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_PAGE_SIZE, 10) || 20;
-const ORDER_VALUES = ["name", "client", "work", "total", "createdAt"];
+const ORDER_VALUES = ["name", "address", "createdAt"];
 const DIRECTION_VALUES = ["asc", "desc"];
-const FILTER_VALUES = ["all", "month"];
+const FILTER_VALUES = ["all", "active", "inactive"];
 
 const querySchema = z.object({
   search: z
@@ -33,8 +33,8 @@ const querySchema = z.object({
         message: "Page number is too large",
       }
     ),
-  order: z.enum(ORDER_VALUES).optional().default("createdAt"),
-  direction: z.enum(DIRECTION_VALUES).optional().default("desc"),
+  order: z.enum(ORDER_VALUES).optional().default("name"),
+  direction: z.enum(DIRECTION_VALUES).optional().default("asc"),
   filter: z.enum(FILTER_VALUES).optional().default("all"),
 });
 
@@ -80,8 +80,8 @@ export default async function Page({ searchParams, params }) {
       ? searchTerms.map((term) => ({
           $or: [
             { name: { $regex: term, $options: "i" } },
-            { "client.name": { $regex: term, $options: "i" } },
-            { "work.name": { $regex: term, $options: "i" } },
+            { address: { $regex: term, $options: "i" } },
+            { cellphone: { $regex: term, $options: "i" } },
           ],
         }))
       : null;
@@ -105,9 +105,7 @@ export default async function Page({ searchParams, params }) {
 
   const sortOptions = {
     name: { name: dir },
-    client: { "client.name": dir },
-    work: { "work.name": dir },
-    total: { total: dir },
+    address: { address: dir },
     createdAt: { createdAt: dir },
   };
   const sortBy = sortOptions[order];
@@ -120,42 +118,63 @@ export default async function Page({ searchParams, params }) {
     },
     {
       $lookup: {
-        from: "clients",
-        localField: "clientId",
-        foreignField: "_id",
-        as: "client",
-      },
-    },
-    { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
         from: "works",
-        localField: "workId",
-        foreignField: "_id",
-        as: "work",
+        let: { clientId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$clientId", "$$clientId"] } } },
+          {
+            $addFields: {
+              status: {
+                $switch: {
+                  branches: [
+                    { case: { $lt: ["$deadline", "$$NOW"] }, then: "late" },
+                    { case: { $gt: ["$startDate", "$$NOW"] }, then: "planned" },
+                  ],
+                  default: "active",
+                },
+              },
+            },
+          },
+          { $sort: { createdAt: -1 } },
+        ],
+        as: "works",
       },
     },
-    { $unwind: { path: "$work", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "products",
-        localField: "products",
-        foreignField: "_id",
-        as: "products",
+        from: "quotes",
+        let: { clientId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$clientId", "$$clientId"] } } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "products",
+              foreignField: "_id",
+              as: "products",
+            },
+          },
+          { $addFields: { quoteTotal: { $sum: "$products.total" } } },
+          { $group: { _id: null, total: { $sum: "$quoteTotal" } } },
+        ],
+        as: "quoteAgg",
       },
     },
     {
       $addFields: {
-        total: { $sum: "$products.total" },
-        itemCount: { $size: "$products" },
+        activeWorkCount: {
+          $size: { $filter: { input: "$works", as: "w", cond: { $eq: ["$$w.status", "active"] } } },
+        },
+        lastWork: { $arrayElemAt: ["$works.name", 0] },
+        totalValue: { $ifNull: [{ $arrayElemAt: ["$quoteAgg.total", 0] }, 0] },
       },
     },
   ];
 
-  if (filter === "month") {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    pipeline.push({ $match: { createdAt: { $gte: startOfMonth } } });
+  if (filter === "active") {
+    pipeline.push({ $match: { activeWorkCount: { $gt: 0 } } });
+  } else if (filter === "inactive") {
+    pipeline.push({ $match: { activeWorkCount: 0 } });
   }
 
   if (searchConditions && searchConditions.length > 0) {
@@ -166,7 +185,7 @@ export default async function Page({ searchParams, params }) {
     });
   }
 
-  const aggregationResult = await Quotes.aggregate([
+  const aggregationResult = await Clients.aggregate([
     ...pipeline,
     {
       $facet: {
@@ -178,12 +197,12 @@ export default async function Page({ searchParams, params }) {
             $project: {
               _id: 1,
               name: 1,
-              description: 1,
-              total: 1,
-              itemCount: 1,
+              address: 1,
+              cellphone: 1,
+              activeWorkCount: 1,
+              lastWork: 1,
+              totalValue: 1,
               createdAt: 1,
-              "client.name": 1,
-              "work.name": 1,
               workspaceId: 1,
             },
           },
@@ -202,14 +221,14 @@ export default async function Page({ searchParams, params }) {
   }
 
   const facet = aggregationResult[0].data;
-  const quotes = JSON.parse(JSON.stringify(facet));
+  const clients = JSON.parse(JSON.stringify(facet));
 
   return (
     <Display
       workspaceId={workspace._id.toString()}
       workspaceName={workspace.name}
       userName={session.user.name ?? session.user.email}
-      quotes={quotes}
+      clients={clients}
       pagination={{
         page: currentPage,
         totalPages,

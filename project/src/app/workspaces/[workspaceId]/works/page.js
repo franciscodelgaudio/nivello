@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import Display from "@/components/dashboard/workspaceId/quotes/Display";
-import { Quotes } from "@/lib/models/Quote";
+import Display from "@/components/dashboard/workspaceId/works/Display";
 import { Workspaces } from "@/lib/models/Workspace";
+import { Works } from "@/lib/models/Work";
 
 const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_PAGE_SIZE, 10) || 20;
-const ORDER_VALUES = ["name", "client", "work", "total", "createdAt"];
+const ORDER_VALUES = ["name", "client", "deadline", "createdAt"];
 const DIRECTION_VALUES = ["asc", "desc"];
-const FILTER_VALUES = ["all", "month"];
+const FILTER_VALUES = ["all", "active", "late", "planned"];
 
 const querySchema = z.object({
   search: z
@@ -33,8 +33,8 @@ const querySchema = z.object({
         message: "Page number is too large",
       }
     ),
-  order: z.enum(ORDER_VALUES).optional().default("createdAt"),
-  direction: z.enum(DIRECTION_VALUES).optional().default("desc"),
+  order: z.enum(ORDER_VALUES).optional().default("deadline"),
+  direction: z.enum(DIRECTION_VALUES).optional().default("asc"),
   filter: z.enum(FILTER_VALUES).optional().default("all"),
 });
 
@@ -80,8 +80,8 @@ export default async function Page({ searchParams, params }) {
       ? searchTerms.map((term) => ({
           $or: [
             { name: { $regex: term, $options: "i" } },
+            { address: { $regex: term, $options: "i" } },
             { "client.name": { $regex: term, $options: "i" } },
-            { "work.name": { $regex: term, $options: "i" } },
           ],
         }))
       : null;
@@ -106,8 +106,7 @@ export default async function Page({ searchParams, params }) {
   const sortOptions = {
     name: { name: dir },
     client: { "client.name": dir },
-    work: { "work.name": dir },
-    total: { total: dir },
+    deadline: { deadline: dir },
     createdAt: { createdAt: dir },
   };
   const sortBy = sortOptions[order];
@@ -129,33 +128,42 @@ export default async function Page({ searchParams, params }) {
     { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "works",
-        localField: "workId",
-        foreignField: "_id",
-        as: "work",
-      },
-    },
-    { $unwind: { path: "$work", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "products",
-        localField: "products",
-        foreignField: "_id",
-        as: "products",
+        from: "quotes",
+        let: { workId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$workId", "$$workId"] } } },
+          {
+            $lookup: {
+              from: "products",
+              localField: "products",
+              foreignField: "_id",
+              as: "products",
+            },
+          },
+          { $addFields: { quoteTotal: { $sum: "$products.total" } } },
+          { $group: { _id: null, total: { $sum: "$quoteTotal" } } },
+        ],
+        as: "quoteAgg",
       },
     },
     {
       $addFields: {
-        total: { $sum: "$products.total" },
-        itemCount: { $size: "$products" },
+        status: {
+          $switch: {
+            branches: [
+              { case: { $lt: ["$deadline", "$$NOW"] }, then: "late" },
+              { case: { $gt: ["$startDate", "$$NOW"] }, then: "planned" },
+            ],
+            default: "active",
+          },
+        },
+        totalValue: { $ifNull: [{ $arrayElemAt: ["$quoteAgg.total", 0] }, 0] },
       },
     },
   ];
 
-  if (filter === "month") {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    pipeline.push({ $match: { createdAt: { $gte: startOfMonth } } });
+  if (filter !== "all") {
+    pipeline.push({ $match: { status: filter } });
   }
 
   if (searchConditions && searchConditions.length > 0) {
@@ -166,7 +174,7 @@ export default async function Page({ searchParams, params }) {
     });
   }
 
-  const aggregationResult = await Quotes.aggregate([
+  const aggregationResult = await Works.aggregate([
     ...pipeline,
     {
       $facet: {
@@ -178,12 +186,13 @@ export default async function Page({ searchParams, params }) {
             $project: {
               _id: 1,
               name: 1,
-              description: 1,
-              total: 1,
-              itemCount: 1,
+              address: 1,
+              startDate: 1,
+              deadline: 1,
+              status: 1,
+              totalValue: 1,
               createdAt: 1,
               "client.name": 1,
-              "work.name": 1,
               workspaceId: 1,
             },
           },
@@ -202,14 +211,14 @@ export default async function Page({ searchParams, params }) {
   }
 
   const facet = aggregationResult[0].data;
-  const quotes = JSON.parse(JSON.stringify(facet));
+  const works = JSON.parse(JSON.stringify(facet));
 
   return (
     <Display
       workspaceId={workspace._id.toString()}
       workspaceName={workspace.name}
       userName={session.user.name ?? session.user.email}
-      quotes={quotes}
+      works={works}
       pagination={{
         page: currentPage,
         totalPages,
