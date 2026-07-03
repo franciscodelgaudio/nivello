@@ -1,0 +1,41 @@
+# Deploy stack for the Oracle Cloud Always Free (ARM Ampere A1) VM.
+#
+# The image is built ON the VM (native arm64) instead of pulling a prebuilt
+# one — a 4 OCPU / 24 GB Ampere box builds the Next.js app in a couple of
+# minutes, avoiding the slow/fragile QEMU arm64 cross-build in CI.
+#
+# Runtime secrets are injected from ./.env at RUNTIME (never baked into the
+# image — .dockerignore already excludes .env*). Copy env.example to .env and
+# fill it in before the first `docker compose up`.
+
+services:
+  app:
+    build:
+      context: ../project
+    image: nivello:local
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "3000" # only reachable inside the compose network; Caddy proxies it
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Substituted from ./.env by docker compose. Caddy reads {$DOMAIN} /
+      # {$ACME_EMAIL} from its own env to serve the site with automatic HTTPS.
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # persists Let's Encrypt certs across restarts
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
