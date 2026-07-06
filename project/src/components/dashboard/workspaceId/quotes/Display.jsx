@@ -4,18 +4,8 @@ import { ChevronLeft, ChevronRight, FileText, Search } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n/dictionaries";
+import { formatDate, formatGuarani } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
 
 function buildHref(workspaceId, params, overrides = {}) {
   const query = new URLSearchParams();
@@ -141,6 +131,7 @@ export default function Display({
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)] text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+                    <th className="px-6 py-4">Nº</th>
                     <th className="px-6 py-4">{t.table.quote}</th>
                     <th className="px-6 py-4">{t.table.client}</th>
                     <th className="px-6 py-4">{t.table.work}</th>
@@ -155,6 +146,9 @@ export default function Display({
                       key={quote._id}
                       className="border-b border-[var(--border-subtle)] transition last:border-0 hover:bg-[var(--surface-hover)]"
                     >
+                      <td className="px-6 py-4 font-mono tabular-nums text-[var(--text-muted)]">
+                        {quote.quoteNumber ?? "-"}
+                      </td>
                       <td className="px-6 py-4 font-semibold text-[var(--text-strong)]">
                         {quote.name}
                       </td>
@@ -168,10 +162,10 @@ export default function Display({
                         {quote.itemCount}
                       </td>
                       <td className="px-6 py-4 text-right font-mono font-medium tabular-nums text-[var(--text-strong)]">
-                        {currencyFormatter.format(quote.total ?? 0)}
+                        {formatGuarani(quote.total ?? 0)}
                       </td>
                       <td className="px-6 py-4 text-[var(--text-body)]">
-                        {quote.createdAt ? dateFormatter.format(new Date(quote.createdAt)) : "-"}
+                        {quote.createdAt ? formatDate(quote.createdAt) : "-"}
                       </td>
                     </tr>
                   ))}

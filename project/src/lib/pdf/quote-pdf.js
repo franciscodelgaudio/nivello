@@ -3,6 +3,7 @@ import "server-only";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 import { formatGuarani, formatNumber, formatDate } from "@/lib/format";
+import { PRODUCT_CATEGORIES, PRODUCT_SECTIONS } from "@/lib/constants/quote-items";
 
 // A4 portrait, in PDF points.
 const PAGE_WIDTH = 595.28;
@@ -39,10 +40,50 @@ const COLORS = {
   totalBg: rgb(0.1, 0.14, 0.26),
 };
 
-const TYPE_LABELS = {
-  service: "SERVICIOS",
-  material: "MATERIALES",
+// El PDF sigue el estilo fijo del presupuesto Formighieri (español), sin
+// importar el locale de la UI — igual que "CLIENTE", "PRESUPUESTO", etc. abajo.
+const CATEGORY_LABELS = {
+  perforacao_sedimentar: "PERFORACIÓN SUELO SEDIMENTARIO",
+  perforacao_rocha: "PERFORACIÓN EN ROCA",
+  revestimento: "PREVISIÓN E INSTALACIÓN DE CAMISA — REVESTIMIENTO",
+  filtros: "FILTROS",
+  pre_filtro: "PREVISIÓN Y APLICACIÓN PRE-FILTRO",
+  limpeza_desenvolvimento: "LIMPIEZA DE POZO - DESARROLLO",
+  mobilizacao: "TRASLADO DE MÁQUINAS",
+  selo_sanitario: "SELLO SANITARIO EN INFORME TÉCNICO",
+  equipamento_bombeamento: "EQUIPAMIENTO DE BOMBEO",
+  outros: "OTROS",
 };
+
+const SECTION_LABELS = {
+  poco_tubular: "POZO TUBULAR",
+  conexao_tanque: "CONEXIÓN DEL POZO AL TANQUE",
+  conjunto_motobomba: "CONJUNTO MOTOBOMBA",
+};
+
+/** Build the descriptive text of an item row: name + technical spec + notes. */
+function buildItemDescription(product) {
+  const parts = [product.name];
+
+  const specParts = [];
+  if (product.diameter) specParts.push(`Diám. ${product.diameter}`);
+  if (product.depthFrom != null && product.depthTo != null) {
+    specParts.push(`de ${formatNumber(product.depthFrom)} a ${formatNumber(product.depthTo)} m`);
+  }
+  if (specParts.length) parts.push(specParts.join(" — "));
+
+  const specs = product.equipmentSpecs;
+  if (specs) {
+    const modelLine = [specs.brand, specs.model, specs.power, specs.voltage].filter(Boolean).join(" ");
+    if (modelLine) parts.push(modelLine);
+    if (specs.cableSpec) parts.push(`Cable: ${specs.cableSpec}`);
+    if (specs.pipeSpec) parts.push(`Caño: ${specs.pipeSpec}`);
+  }
+
+  if (product.description) parts.push(product.description);
+
+  return parts.join(" | ");
+}
 
 /**
  * Strip characters the pdf-lib standard (WinAnsi/Latin-1) fonts can't encode,
@@ -158,7 +199,7 @@ function ensureSpace(r, needed) {
 /** Draw one product row; returns nothing but advances the cursor. */
 function drawItemRow(r, { index, product, font }) {
   const descLines = wrapText(
-    product.description ? `${product.name} — ${product.description}` : product.name,
+    buildItemDescription(product),
     font,
     ROW_FONT_SIZE,
     COL.unitPrice - COL.desc - CELL_PAD * 2
@@ -173,7 +214,7 @@ function drawItemRow(r, { index, product, font }) {
 
   const quantity = Number(product.quantity) || 0;
   const total = Number(product.total) || 0;
-  const unitPrice = quantity > 0 ? total / quantity : total;
+  const unitPrice = Number(product.unitPrice) || 0;
 
   r.text(String(index), COL.item + CELL_PAD, firstLineY, { size: ROW_FONT_SIZE });
   r.text(formatNumber(quantity), COL.qty + CELL_PAD, firstLineY, { size: ROW_FONT_SIZE });
@@ -218,7 +259,9 @@ export async function buildQuotePdf(quote, { companyName } = {}) {
   const client = quote.client || {};
   const work = quote.work || {};
   const products = Array.isArray(quote.products) ? quote.products : [];
-  const quoteNumber = String(quote._id || "").slice(-6).toUpperCase();
+  const quoteNumber = quote.quoteNumber != null
+    ? String(quote.quoteNumber).padStart(6, "0")
+    : String(quote._id || "").slice(-6).toUpperCase();
 
   // --- Issuer header ------------------------------------------------------
   r.text(companyName || "Presupuesto", CONTENT_LEFT, r.state.y - 14, { size: 18, bold: true });
@@ -268,21 +311,18 @@ export async function buildQuotePdf(quote, { companyName } = {}) {
   // --- Line items table ---------------------------------------------------
   drawTableHeader(r);
 
-  const grouped = { service: [], material: [] };
+  const grouped = {};
+  for (const category of PRODUCT_CATEGORIES) grouped[category] = [];
   for (const product of products) {
-    (grouped[product.type] || (grouped.material)).push(product);
+    (grouped[product.category] || (grouped.outros)).push(product);
   }
 
   let index = 1;
-  const groupOrder = ["service", "material"];
-  for (const type of groupOrder) {
-    const items = grouped[type];
-    if (!items.length) continue;
-    // Only print the group header if both groups have items; otherwise it's noise.
-    if (grouped.service.length && grouped.material.length) {
-      drawGroupRow(r, TYPE_LABELS[type]);
-    }
-    for (const product of items) {
+  for (const category of PRODUCT_CATEGORIES) {
+    const categoryItems = grouped[category];
+    if (!categoryItems.length) continue;
+    drawGroupRow(r, CATEGORY_LABELS[category]);
+    for (const product of categoryItems) {
       drawItemRow(r, { index, product, font });
       index += 1;
     }
@@ -298,13 +338,36 @@ export async function buildQuotePdf(quote, { companyName } = {}) {
     r.line(CONTENT_LEFT, r.state.y, COL_END, r.state.y, 0.5);
   }
 
+  // --- Section subtotals ---------------------------------------------------
+  const sectionTotals = {};
+  for (const section of PRODUCT_SECTIONS) sectionTotals[section] = 0;
+  for (const product of products) {
+    const section = PRODUCT_SECTIONS.includes(product.section) ? product.section : "conexao_tanque";
+    sectionTotals[section] += Number(product.total) || 0;
+  }
+
+  const maxDepth = products
+    .filter((p) => p.section === "poco_tubular" && p.depthTo != null)
+    .reduce((max, p) => Math.max(max, Number(p.depthTo) || 0), 0);
+
+  const subtotalRowHeight = 16;
+  for (const section of PRODUCT_SECTIONS) {
+    ensureSpace(r, subtotalRowHeight);
+    r.state.y -= subtotalRowHeight;
+    const label = section === "poco_tubular" && maxDepth > 0
+      ? `${SECTION_LABELS[section]} PARA ${formatNumber(maxDepth)} METROS`
+      : SECTION_LABELS[section];
+    r.text(label, COL.unit + CELL_PAD, r.state.y + 4, { size: 9, bold: true });
+    r.textRight(formatGuarani(sectionTotals[section]), COL_END - CELL_PAD, r.state.y + 4, { size: 9, bold: true });
+  }
+
   // --- Total --------------------------------------------------------------
   const total = Number(quote.total) || products.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
   const totalHeight = 24;
   ensureSpace(r, totalHeight);
   r.state.y -= totalHeight;
   r.rect(COL.unit, r.state.y, COL_END - COL.unit, totalHeight, { color: COLORS.totalBg });
-  r.text("TOTAL IVA INCLUIDO", COL.unit + CELL_PAD, r.state.y + 8, {
+  r.text(quote.taxIncluded === false ? "TOTAL (IVA NO INCLUIDO)" : "TOTAL IVA INCLUIDO", COL.unit + CELL_PAD, r.state.y + 8, {
     size: 10,
     bold: true,
     color: COLORS.headerText,
@@ -315,6 +378,20 @@ export async function buildQuotePdf(quote, { companyName } = {}) {
     color: COLORS.headerText,
   });
   r.state.y -= 20;
+
+  // --- Conditions (payment / delivery / validity) --------------------------
+  const conditions = [
+    quote.paymentTerms ? `Condiciones de pago: ${quote.paymentTerms}` : null,
+    quote.deliveryTerm ? `Plazo de entrega de la obra: ${quote.deliveryTerm}` : null,
+    quote.validityDays ? `Validez del presupuesto: ${quote.validityDays} días` : null,
+  ].filter(Boolean);
+
+  for (const conditionLine of conditions) {
+    ensureSpace(r, LINE_HEIGHT);
+    r.text(conditionLine, CONTENT_LEFT, r.state.y, { size: 9, bold: true, color: COLORS.text });
+    r.state.y -= LINE_HEIGHT;
+  }
+  if (conditions.length) r.state.y -= 4;
 
   // --- Observations -------------------------------------------------------
   if (quote.description) {

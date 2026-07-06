@@ -181,6 +181,7 @@ export default async function Page({ searchParams, params }) {
           {
             $project: {
               _id: 1,
+              quoteNumber: 1,
               name: 1,
               description: 1,
               total: 1,

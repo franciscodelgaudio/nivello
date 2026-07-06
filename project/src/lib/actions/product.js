@@ -1,22 +1,27 @@
 "use server";
 
-import z from "zod";
 import mongoose from "mongoose";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { dbConnect } from "@/lib/handler/db";
+import { sectionForCategory } from "@/lib/constants/quote-items";
+import { productSchema } from "@/lib/schemas/product";
 import { Products } from "@/lib/models/Product";
 import { Workspaces } from "@/lib/models/Workspace";
 
-const productSchema = z.object({
-  name: z.string().trim().min(1, "Informe o nome do produto"),
-  description: z.string().trim().optional(),
-  quantity: z.coerce.number({ error: "Informe a quantidade" }),
-  unit: z.string().trim().min(1, "Informe a unidade"),
-  total: z.coerce.number({ error: "Informe o total" }),
-  type: z.enum(["service", "material"], { error: "Selecione o tipo" }),
-});
+// total é sempre quantity * unitPrice — nunca aceito diretamente do cliente.
+function toProductDoc(item) {
+  const { quantity, unitPrice, category, ...rest } = item;
+  return {
+    ...rest,
+    category,
+    section: sectionForCategory(category),
+    quantity,
+    unitPrice,
+    total: quantity * unitPrice,
+  };
+}
 
 export async function createProduct(workspaceId, values) {
   const session = await auth();
@@ -36,11 +41,11 @@ export async function createProduct(workspaceId, values) {
   try {
     await Products.create({
       workspaceId: workspace._id,
-      ...parsed.data,
+      ...toProductDoc(parsed.data),
     });
-    return { success: true, message: "Produto criado com sucesso." };
+    return { success: true, message: "Item criado com sucesso." };
   } catch {
-    return { success: false, message: "Não foi possível criar o produto. Tente novamente.", };
+    return { success: false, message: "Não foi possível criar o item. Tente novamente.", };
   }
 }
 
@@ -62,12 +67,12 @@ export async function updateProduct(workspaceId, productId, values) {
   try {
     const result = await Products.updateOne(
       { _id: new mongoose.Types.ObjectId(productId), workspaceId: workspace._id },
-      { $set: parsed.data },
+      { $set: toProductDoc(parsed.data) },
     );
-    if (result.matchedCount === 0) return { success: false, message: "Produto não encontrado.", };
-    return { success: true, message: "Produto atualizado com sucesso." };
+    if (result.matchedCount === 0) return { success: false, message: "Item não encontrado.", };
+    return { success: true, message: "Item atualizado com sucesso." };
   } catch {
-    return { success: false, message: "Não foi possível atualizar o produto. Tente novamente.", };
+    return { success: false, message: "Não foi possível atualizar o item. Tente novamente.", };
   }
 }
 
@@ -88,9 +93,9 @@ export async function deleteProduct(workspaceId, productId) {
       _id: new mongoose.Types.ObjectId(productId),
       workspaceId: workspace._id,
     });
-    if (result.deletedCount === 0) return { success: false, message: "Produto não encontrado.", };
-    return { success: true, message: "Produto removido com sucesso." };
+    if (result.deletedCount === 0) return { success: false, message: "Item não encontrado.", };
+    return { success: true, message: "Item removido com sucesso." };
   } catch {
-    return { success: false, message: "Não foi possível remover o produto. Tente novamente.", };
+    return { success: false, message: "Não foi possível remover o item. Tente novamente.", };
   }
 }

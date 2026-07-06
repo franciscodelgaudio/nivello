@@ -6,6 +6,11 @@ const QuotesSchema = new mongoose.Schema({
         ref: "workspaces",
         required: true,
     },
+    // Número sequencial por workspace (exibido como "Nro." no PDF) — distinto do _id.
+    quoteNumber: {
+        type: Number,
+        required: true,
+    },
     name: {
         type: String,
         required: true,
@@ -29,6 +34,24 @@ const QuotesSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "clients",
         required: true,
+    },
+    paymentTerms: {
+        type: String,
+        default: null,
+        required: false,
+    },
+    deliveryTerm: {
+        type: String,
+        default: null,
+        required: false,
+    },
+    validityDays: {
+        type: Number,
+        default: 30,
+    },
+    taxIncluded: {
+        type: Boolean,
+        default: true,
     },
 }, {
     timestamps: true,
