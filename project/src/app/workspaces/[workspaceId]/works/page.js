@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { dbConnect } from "@/lib/handler/db";
 import Display from "@/components/dashboard/workspaceId/works/Display";
 import { getLocale } from "@/lib/i18n/locale";
+import { Clients } from "@/lib/models/Client";
 import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
 import { Works } from "@/lib/models/Work";
 
@@ -190,13 +191,17 @@ export default async function Page({ searchParams, params }) {
             $project: {
               _id: 1,
               name: 1,
+              description: 1,
               address: 1,
               startDate: 1,
               deadline: 1,
               status: 1,
               totalValue: 1,
               createdAt: 1,
+              clientId: 1,
               "client.name": 1,
+              "client.address": 1,
+              "client.cellphone": 1,
               workspaceId: 1,
             },
           },
@@ -217,7 +222,10 @@ export default async function Page({ searchParams, params }) {
   const facet = aggregationResult[0].data;
   const works = JSON.parse(JSON.stringify(facet));
 
-  const workspaces = await listWorkspacesForOwner(ownerObjectId);
+  const [clients, workspaces] = await Promise.all([
+    Clients.find({ workspaceId: workspaceObjectId }).select("_id name").sort({ name: 1 }).lean(),
+    listWorkspacesForOwner(ownerObjectId),
+  ]);
   const locale = await getLocale();
 
   return (
@@ -229,6 +237,7 @@ export default async function Page({ searchParams, params }) {
       userEmail={session.user.email}
       userRole={session.user.role}
       works={works}
+      clients={JSON.parse(JSON.stringify(clients))}
       pagination={{
         page: currentPage,
         totalPages,

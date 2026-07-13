@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, useFieldArray, useWatch } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import { HardHat, Plus, Trash2, UserPlus } from "lucide-react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -190,26 +190,48 @@ export default function Display({
                   registration={register("name", { required: t.fields.name })}
                 />
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <SelectField
-                    label={t.fields.client}
-                    error={errors.clientId}
-                    registration={register("clientId", { required: t.fields.client })}
-                  >
-                    <option value="">{t.fields.clientPlaceholder}</option>
-                    {clients.map((client) => (
-                      <option key={client._id} value={client._id}>{client.name}</option>
-                    ))}
-                  </SelectField>
-                  <SelectField
-                    label={t.fields.work}
-                    error={errors.workId}
-                    registration={register("workId", { required: t.fields.work })}
-                  >
-                    <option value="">{t.fields.workPlaceholder}</option>
-                    {works.map((work) => (
-                      <option key={work._id} value={work._id}>{work.name}</option>
-                    ))}
-                  </SelectField>
+                  <div className="flex flex-col gap-2">
+                    <SelectField
+                      label={t.fields.client}
+                      error={errors.clientId}
+                      registration={register("clientId", { required: t.fields.client })}
+                    >
+                      <option value="">{t.fields.clientPlaceholder}</option>
+                      {clients.map((client) => (
+                        <option key={client._id} value={client._id}>{client.name}</option>
+                      ))}
+                    </SelectField>
+                    <Link
+                      href={`/workspaces/${workspaceId}/clients/new`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 self-start text-xs font-semibold text-[var(--teal-600)] hover:text-[var(--teal-700)] hover:underline"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      {t.fields.clientNewLink}
+                    </Link>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <SelectField
+                      label={t.fields.work}
+                      error={errors.workId}
+                      registration={register("workId", { required: t.fields.work })}
+                    >
+                      <option value="">{t.fields.workPlaceholder}</option>
+                      {works.map((work) => (
+                        <option key={work._id} value={work._id}>{work.name}</option>
+                      ))}
+                    </SelectField>
+                    <Link
+                      href={`/workspaces/${workspaceId}/works/new`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 self-start text-xs font-semibold text-[var(--teal-600)] hover:text-[var(--teal-700)] hover:underline"
+                    >
+                      <HardHat className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      {t.fields.workNewLink}
+                    </Link>
+                  </div>
                 </div>
 
                 <TextareaField
@@ -271,17 +293,15 @@ export default function Display({
                         <span className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
                           Item {index + 1}
                         </span>
-                        {fields.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={t.removeItem}
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                          </Button>
-                        ) : null}
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon-sm"
+                          aria-label={t.removeItem}
+                          onClick={() => remove(index)}
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        </Button>
                       </div>
 
                       <div className="grid gap-4 sm:grid-cols-2">
@@ -371,8 +391,18 @@ export default function Display({
                   );
                 })}
 
-                <Button type="button" variant="outline" onClick={() => append(emptyItem())} className="self-start">
-                  <Plus className="h-4 w-4" strokeWidth={1.75} />
+                {fields.length === 0 ? (
+                  <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-default)] px-5 py-6 text-center text-sm text-[var(--text-muted)]">
+                    {t.noItems}
+                  </p>
+                ) : null}
+
+                <Button
+                  type="button"
+                  onClick={() => append(emptyItem())}
+                  className="justify-center border-2 border-dashed border-[var(--teal-500)] bg-[var(--teal-50)] py-5 text-[var(--teal-700)] hover:bg-[var(--teal-100)]"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2} />
                   {t.addItem}
                 </Button>
               </div>

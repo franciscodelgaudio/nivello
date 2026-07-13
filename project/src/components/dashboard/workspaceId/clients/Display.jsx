@@ -1,8 +1,14 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Trash2, Users } from "lucide-react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { deleteClient } from "@/lib/actions/client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +70,8 @@ export default function Display({
 }) {
   const t = getDictionary(locale).clients;
   const params = { search, order, direction, filter };
+  const router = useRouter();
+  const [deletingClient, setDeletingClient] = useState(null);
 
   const FILTERS = [
     { value: "all", label: t.filters.all },
@@ -164,6 +172,7 @@ export default function Display({
                     <th className="px-6 py-4">{t.table.activeWorks}</th>
                     <th className="px-6 py-4">{t.table.lastWork}</th>
                     <th className="px-6 py-4 text-right">{t.table.totalValue}</th>
+                    <th className="px-6 py-4 text-right">{t.table.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -197,6 +206,18 @@ export default function Display({
                       <td className="px-6 py-4 text-right font-mono font-medium tabular-nums text-[var(--text-strong)]">
                         {currencyFormatter.format(client.totalValue ?? 0)}
                       </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setDeletingClient(client)}
+                          aria-label={t.deleteAction}
+                          title={t.deleteAction}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] border-2 border-[var(--danger-600)] bg-[var(--danger-50)] px-3 text-xs font-semibold text-[var(--danger-600)] transition hover:bg-[var(--danger-600)] hover:text-white"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={2} />
+                          {t.deleteActionShort}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -229,6 +250,21 @@ export default function Display({
           </div>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={!!deletingClient}
+        onOpenChange={(open) => !open && setDeletingClient(null)}
+        title={t.deleteConfirm.title}
+        description={t.deleteConfirm.message}
+        confirmLabel={t.deleteConfirm.confirm}
+        confirmingLabel={t.deleteConfirm.deleting}
+        cancelLabel={t.deleteConfirm.cancel}
+        onConfirm={async () => {
+          const result = await deleteClient(workspaceId, deletingClient?._id);
+          if (result.success) router.refresh();
+          return result;
+        }}
+      />
     </DashboardShell>
   );
 }

@@ -6,7 +6,9 @@ import { auth } from "@/auth";
 import { dbConnect } from "@/lib/handler/db";
 import Display from "@/components/dashboard/workspaceId/quotes/Display";
 import { getLocale } from "@/lib/i18n/locale";
+import { Clients } from "@/lib/models/Client";
 import { Quotes } from "@/lib/models/Quote";
+import { Works } from "@/lib/models/Work";
 import { listWorkspacesForOwner, Workspaces } from "@/lib/models/Workspace";
 
 const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_PAGE_SIZE, 10) || 20;
@@ -184,11 +186,23 @@ export default async function Page({ searchParams, params }) {
               quoteNumber: 1,
               name: 1,
               description: 1,
+              paymentTerms: 1,
+              deliveryTerm: 1,
+              validityDays: 1,
+              taxIncluded: 1,
               total: 1,
               itemCount: 1,
               createdAt: 1,
+              clientId: 1,
+              workId: 1,
               "client.name": 1,
+              "client.address": 1,
+              "client.cellphone": 1,
               "work.name": 1,
+              "work.address": 1,
+              "work.startDate": 1,
+              "work.deadline": 1,
+              products: 1,
               workspaceId: 1,
             },
           },
@@ -209,7 +223,11 @@ export default async function Page({ searchParams, params }) {
   const facet = aggregationResult[0].data;
   const quotes = JSON.parse(JSON.stringify(facet));
 
-  const workspaces = await listWorkspacesForOwner(ownerObjectId);
+  const [clients, works, workspaces] = await Promise.all([
+    Clients.find({ workspaceId: workspaceObjectId }).select("_id name").sort({ name: 1 }).lean(),
+    Works.find({ workspaceId: workspaceObjectId }).select("_id name").sort({ name: 1 }).lean(),
+    listWorkspacesForOwner(ownerObjectId),
+  ]);
   const locale = await getLocale();
 
   return (
@@ -221,6 +239,8 @@ export default async function Page({ searchParams, params }) {
       userEmail={session.user.email}
       userRole={session.user.role}
       quotes={quotes}
+      clients={JSON.parse(JSON.stringify(clients))}
+      works={JSON.parse(JSON.stringify(works))}
       pagination={{
         page: currentPage,
         totalPages,
