@@ -1,16 +1,108 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search, Trash2, Users } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, Trash2, Users, X } from "lucide-react";
 
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { deleteClient } from "@/lib/actions/client";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { createClient, deleteClient } from "@/lib/actions/client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
+
+function Field({ label, placeholder, type = "text", error, registration }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">{label}</span>
+      <input
+        type={type}
+        placeholder={placeholder}
+        aria-invalid={error ? "true" : undefined}
+        className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-sm text-[var(--text-strong)] outline-none transition placeholder:text-[var(--text-subtle)] focus:border-[var(--teal-500)] focus:ring-2 focus:ring-[var(--teal-500)]/20 aria-invalid:border-[var(--danger-600)]"
+        {...registration}
+      />
+      {error ? <span className="text-xs text-[var(--danger-600)]">{error.message}</span> : null}
+    </label>
+  );
+}
+
+function ClientForm({ workspaceId, tFields, labels, submitAction, onSaved, onCancel }) {
+  const [feedback, setFeedback] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    defaultValues: { name: "", address: "", cellphone: "" },
+  });
+
+  const onSubmit = async (values) => {
+    setFeedback(null);
+
+    const result = await submitAction(values);
+
+    if (!result.success) {
+      setFeedback({ type: "error", message: result.message });
+      return;
+    }
+
+    onSaved();
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      <InlineAlert type={feedback?.type} message={feedback?.message} />
+
+      <Field
+        label={tFields.name}
+        placeholder={tFields.namePlaceholder}
+        error={errors.name}
+        registration={register("name", { required: tFields.name })}
+      />
+      <Field
+        label={tFields.address}
+        placeholder={tFields.addressPlaceholder}
+        error={errors.address}
+        registration={register("address", { required: tFields.address })}
+      />
+      <Field
+        label={tFields.cellphone}
+        placeholder={tFields.cellphonePlaceholder}
+        error={errors.cellphone}
+        registration={register("cellphone", { required: tFields.cellphone })}
+      />
+
+      <div className="mt-2 flex flex-wrap gap-3">
+        <Button type="submit" loading={isSubmitting}>
+          {labels.save}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {labels.cancel}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -66,12 +158,20 @@ export default function Display({
   order,
   direction,
   filter,
+  advancedFilters,
   locale = "pt",
 }) {
-  const t = getDictionary(locale).clients;
-  const params = { search, order, direction, filter };
+  const dictionary = getDictionary(locale);
+  const t = dictionary.clients;
+  const tNew = dictionary.clientsNew;
+  const params = { search, order, direction, filter, ...advancedFilters };
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [deletingClient, setDeletingClient] = useState(null);
+  const [creatingClient, setCreatingClient] = useState(() => searchParams.get("new") === "1");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const hasAdvancedFilters = Object.values(advancedFilters).some((value) => value !== "");
 
   const FILTERS = [
     { value: "all", label: t.filters.all },
@@ -112,10 +212,20 @@ export default function Display({
               <input type="hidden" name="order" value={order} />
               <input type="hidden" name="direction" value={direction} />
               <input type="hidden" name="filter" value={filter} />
+              {Object.entries(advancedFilters).map(([key, value]) =>
+                value ? <input key={key} type="hidden" name={key} value={value} /> : null
+              )}
             </form>
-            <Link href={`/workspaces/${workspaceId}/clients/new`} className={buttonVariants({ variant: "dark" })}>
+            <Button type="button" variant="outline" onClick={() => setFiltersOpen(true)} className="relative">
+              <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} />
+              {t.advancedFilters.trigger}
+              {hasAdvancedFilters ? (
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[var(--teal-500)]" />
+              ) : null}
+            </Button>
+            <button type="button" onClick={() => setCreatingClient(true)} className={buttonVariants({ variant: "dark" })}>
               {t.newClient}
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -128,11 +238,7 @@ export default function Display({
                 <Link
                   key={value}
                   href={buildHref(workspaceId, params, { filter: value, page: 1 })}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? "bg-[var(--pill-active-bg)] text-[var(--pill-active-fg)]"
-                      : "bg-[var(--pill-bg)] text-[var(--pill-fg)] hover:bg-[var(--neutral-200)]"
-                  }`}
+                  className={buttonVariants({ variant: isActive ? "dark" : "outline", size: "sm" })}
                 >
                   {label}
                 </Link>
@@ -157,72 +263,70 @@ export default function Display({
               <p className="max-w-sm text-sm text-[var(--text-muted)]">
                 {t.emptyDescription}
               </p>
-              <Link href={`/workspaces/${workspaceId}/clients/new`} className={buttonVariants({ variant: "dark", className: "mt-4" })}>
+              <button type="button" onClick={() => setCreatingClient(true)} className={buttonVariants({ variant: "dark", className: "mt-4" })}>
                 {t.newClient}
-              </Link>
+              </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)] text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-                    <th className="px-6 py-4">{t.table.name}</th>
-                    <th className="px-6 py-4">{t.table.contact}</th>
-                    <th className="px-6 py-4">{t.table.location}</th>
-                    <th className="px-6 py-4">{t.table.activeWorks}</th>
-                    <th className="px-6 py-4">{t.table.lastWork}</th>
-                    <th className="px-6 py-4 text-right">{t.table.totalValue}</th>
-                    <th className="px-6 py-4 text-right">{t.table.actions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clients.map((client) => (
-                    <tr
-                      key={client._id}
-                      className="border-b border-[var(--border-subtle)] transition last:border-0 hover:bg-[var(--surface-hover)]"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarTone(client.name)}`}>
-                            {initials(client.name)}
-                          </div>
-                          <span className="font-semibold text-[var(--text-strong)]">{client.name}</span>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[var(--border-subtle)] text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)] hover:bg-transparent">
+                  <TableHead className="h-auto px-6 py-4 text-[var(--text-muted)]">{t.table.name}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-[var(--text-muted)]">{t.table.contact}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-[var(--text-muted)]">{t.table.location}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-[var(--text-muted)]">{t.table.activeWorks}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-[var(--text-muted)]">{t.table.lastWork}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-right text-[var(--text-muted)]">{t.table.totalValue}</TableHead>
+                  <TableHead className="h-auto px-6 py-4 text-right text-[var(--text-muted)]">{t.table.actions}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clients.map((client) => (
+                  <TableRow
+                    key={client._id}
+                    className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--surface-hover)]"
+                  >
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarTone(client.name)}`}>
+                          {initials(client.name)}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-[var(--text-body)]">{client.cellphone}</td>
-                      <td className="px-6 py-4 text-[var(--text-body)]">{client.address}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex h-6 min-w-6 items-center justify-center rounded-[var(--radius-sm)] px-1.5 font-mono text-xs font-semibold tabular-nums ${
-                            client.activeWorkCount > 0
-                              ? "bg-[var(--teal-50)] text-[var(--teal-700)]"
-                              : "bg-[var(--neutral-100)] text-[var(--text-subtle)]"
-                          }`}
-                        >
-                          {client.activeWorkCount}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[var(--text-body)]">{client.lastWork || "-"}</td>
-                      <td className="px-6 py-4 text-right font-mono font-medium tabular-nums text-[var(--text-strong)]">
-                        {currencyFormatter.format(client.totalValue ?? 0)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setDeletingClient(client)}
-                          aria-label={t.deleteAction}
-                          title={t.deleteAction}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] border-2 border-[var(--danger-600)] bg-[var(--danger-50)] px-3 text-xs font-semibold text-[var(--danger-600)] transition hover:bg-[var(--danger-600)] hover:text-white"
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={2} />
-                          {t.deleteActionShort}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <span className="font-semibold text-[var(--text-strong)]">{client.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-6 py-4 font-mono text-[var(--text-body)]">{client.cellphone}</TableCell>
+                    <TableCell className="px-6 py-4 text-[var(--text-body)]">{client.address}</TableCell>
+                    <TableCell className="px-6 py-4">
+                      <span
+                        className={`inline-flex h-6 min-w-6 items-center justify-center rounded-[var(--radius-sm)] px-1.5 font-mono text-xs font-semibold tabular-nums ${
+                          client.activeWorkCount > 0
+                            ? "bg-[var(--teal-50)] text-[var(--teal-700)]"
+                            : "bg-[var(--neutral-100)] text-[var(--text-subtle)]"
+                        }`}
+                      >
+                        {client.activeWorkCount}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-[var(--text-body)]">{client.lastWork || "-"}</TableCell>
+                    <TableCell className="px-6 py-4 text-right font-mono font-medium tabular-nums text-[var(--text-strong)]">
+                      {currencyFormatter.format(client.totalValue ?? 0)}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setDeletingClient(client)}
+                        aria-label={t.deleteAction}
+                        title={t.deleteAction}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] border-2 border-[var(--danger-600)] bg-[var(--danger-50)] px-3 text-xs font-semibold text-[var(--danger-600)] transition hover:bg-[var(--danger-600)] hover:text-white"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={2} />
+                        {t.deleteActionShort}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </section>
 
@@ -250,6 +354,83 @@ export default function Display({
           </div>
         ) : null}
       </div>
+
+      {/* Painel de criação */}
+      <Sheet
+        open={creatingClient}
+        onOpenChange={(open) => {
+          setCreatingClient(open);
+          if (!open && searchParams.get("new") === "1") {
+            router.replace(`/workspaces/${workspaceId}/clients`);
+          }
+        }}
+      >
+        <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{tNew.title}</SheetTitle>
+            <SheetDescription>{tNew.subtitle}</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-4">
+            <ClientForm
+              workspaceId={workspaceId}
+              tFields={tNew.fields}
+              labels={{ save: tNew.save, cancel: tNew.cancel }}
+              submitAction={(values) => createClient(workspaceId, values)}
+              onSaved={() => {
+                setCreatingClient(false);
+                if (searchParams.get("new") === "1") {
+                  router.replace(`/workspaces/${workspaceId}/clients`);
+                }
+                router.refresh();
+              }}
+              onCancel={() => setCreatingClient(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Painel de filtros avançados */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{t.advancedFilters.title}</SheetTitle>
+            <SheetDescription>{t.advancedFilters.subtitle}</SheetDescription>
+          </SheetHeader>
+          <form action={`/workspaces/${workspaceId}/clients`} className="flex flex-col gap-5 px-4 pb-4">
+            <input type="hidden" name="search" value={search} />
+            <input type="hidden" name="order" value={order} />
+            <input type="hidden" name="direction" value={direction} />
+            <input type="hidden" name="filter" value={filter} />
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">{t.advancedFilters.value}</span>
+              <div className="grid grid-cols-2 gap-3">
+                <Field type="number" placeholder={t.advancedFilters.min} registration={{ name: "valueMin", defaultValue: advancedFilters.valueMin, min: 0 }} />
+                <Field type="number" placeholder={t.advancedFilters.max} registration={{ name: "valueMax", defaultValue: advancedFilters.valueMax, min: 0 }} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">{t.advancedFilters.activeWorks}</span>
+              <div className="grid grid-cols-2 gap-3">
+                <Field type="number" placeholder={t.advancedFilters.min} registration={{ name: "activeWorksMin", defaultValue: advancedFilters.activeWorksMin, min: 0 }} />
+                <Field type="number" placeholder={t.advancedFilters.max} registration={{ name: "activeWorksMax", defaultValue: advancedFilters.activeWorksMax, min: 0 }} />
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-3">
+              <Button type="submit">{t.advancedFilters.apply}</Button>
+              <Link
+                href={buildHref(workspaceId, { search, order, direction }, {})}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <X className="h-4 w-4" strokeWidth={1.75} />
+                {t.advancedFilters.clear}
+              </Link>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       <ConfirmDialog
         open={!!deletingClient}

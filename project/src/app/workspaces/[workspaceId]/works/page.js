@@ -15,6 +15,21 @@ const ORDER_VALUES = ["name", "client", "deadline", "createdAt"];
 const DIRECTION_VALUES = ["asc", "desc"];
 const FILTER_VALUES = ["all", "active", "late", "planned"];
 
+const objectIdParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || mongoose.Types.ObjectId.isValid(val), { message: "ID inválido" });
+
+const numberParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || /^\d+(\.\d+)?$/.test(val), { message: "Valor inválido" });
+
+const dateParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || !Number.isNaN(Date.parse(val)), { message: "Data inválida" });
+
 const querySchema = z.object({
   search: z
     .string()
@@ -39,6 +54,11 @@ const querySchema = z.object({
   order: z.enum(ORDER_VALUES).optional().default("deadline"),
   direction: z.enum(DIRECTION_VALUES).optional().default("asc"),
   filter: z.enum(FILTER_VALUES).optional().default("all"),
+  clientId: objectIdParam,
+  valueMin: numberParam,
+  valueMax: numberParam,
+  dateFrom: dateParam,
+  dateTo: dateParam,
 });
 
 export default async function Page({ searchParams, params }) {
@@ -71,7 +91,8 @@ export default async function Page({ searchParams, params }) {
   const queryResult = querySchema.safeParse(await searchParams);
   if (!queryResult.success) return notFound();
 
-  const { search, page, order, direction, filter } = queryResult.data;
+  const { search, page, order, direction, filter, clientId, valueMin, valueMax, dateFrom, dateTo } =
+    queryResult.data;
 
   const searchTerms = search
     ? search
@@ -116,11 +137,21 @@ export default async function Page({ searchParams, params }) {
   };
   const sortBy = sortOptions[order];
 
+  const rawMatch = { workspaceId: workspaceObjectId };
+  if (clientId) rawMatch.clientId = new mongoose.Types.ObjectId(clientId);
+  if (dateFrom || dateTo) {
+    rawMatch.deadline = {};
+    if (dateFrom) rawMatch.deadline.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      rawMatch.deadline.$lte = endOfDay;
+    }
+  }
+
   const pipeline = [
     {
-      $match: {
-        workspaceId: workspaceObjectId,
-      },
+      $match: rawMatch,
     },
     {
       $lookup: {
@@ -169,6 +200,13 @@ export default async function Page({ searchParams, params }) {
 
   if (filter !== "all") {
     pipeline.push({ $match: { status: filter } });
+  }
+
+  if (valueMin || valueMax) {
+    const range = {};
+    if (valueMin) range.$gte = Number(valueMin);
+    if (valueMax) range.$lte = Number(valueMax);
+    pipeline.push({ $match: { totalValue: range } });
   }
 
   if (searchConditions && searchConditions.length > 0) {
@@ -249,6 +287,13 @@ export default async function Page({ searchParams, params }) {
       order={order}
       direction={direction}
       filter={filter}
+      advancedFilters={{
+        clientId: clientId || "",
+        valueMin: valueMin || "",
+        valueMax: valueMax || "",
+        dateFrom: dateFrom || "",
+        dateTo: dateTo || "",
+      }}
       locale={locale}
     />
   );

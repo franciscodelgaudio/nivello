@@ -25,6 +25,7 @@ const quoteHeaderSchema = z.object({
   deliveryTerm: z.string().trim().optional(),
   validityDays: z.coerce.number({ error: "Informe a validade em dias" }).int().positive(),
   taxIncluded: z.boolean().optional().default(true),
+  status: z.enum(["pendente", "em_analise", "aprovado"]).optional().default("pendente"),
 });
 
 function toProductDoc(item) {

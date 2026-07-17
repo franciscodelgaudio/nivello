@@ -15,6 +15,22 @@ const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_PAGE_SIZE, 10) || 20;
 const ORDER_VALUES = ["name", "client", "work", "total", "createdAt"];
 const DIRECTION_VALUES = ["asc", "desc"];
 const FILTER_VALUES = ["all", "month"];
+const STATUS_VALUES = ["all", "pendente", "em_analise", "aprovado"];
+
+const objectIdParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || mongoose.Types.ObjectId.isValid(val), { message: "ID inválido" });
+
+const numberParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || /^\d+(\.\d+)?$/.test(val), { message: "Valor inválido" });
+
+const dateParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || !Number.isNaN(Date.parse(val)), { message: "Data inválida" });
 
 const querySchema = z.object({
   search: z
@@ -40,6 +56,16 @@ const querySchema = z.object({
   order: z.enum(ORDER_VALUES).optional().default("createdAt"),
   direction: z.enum(DIRECTION_VALUES).optional().default("desc"),
   filter: z.enum(FILTER_VALUES).optional().default("all"),
+  status: z.enum(STATUS_VALUES).optional().default("all"),
+  clientId: objectIdParam,
+  workId: objectIdParam,
+  quoteNumber: numberParam,
+  totalMin: numberParam,
+  totalMax: numberParam,
+  itemsMin: numberParam,
+  itemsMax: numberParam,
+  dateFrom: dateParam,
+  dateTo: dateParam,
 });
 
 export default async function Page({ searchParams, params }) {
@@ -72,7 +98,23 @@ export default async function Page({ searchParams, params }) {
   const queryResult = querySchema.safeParse(await searchParams);
   if (!queryResult.success) return notFound();
 
-  const { search, page, order, direction, filter } = queryResult.data;
+  const {
+    search,
+    page,
+    order,
+    direction,
+    filter,
+    status,
+    clientId,
+    workId,
+    quoteNumber,
+    totalMin,
+    totalMax,
+    itemsMin,
+    itemsMax,
+    dateFrom,
+    dateTo,
+  } = queryResult.data;
 
   const searchTerms = search
     ? search
@@ -118,11 +160,23 @@ export default async function Page({ searchParams, params }) {
   };
   const sortBy = sortOptions[order];
 
+  const rawMatch = { workspaceId: workspaceObjectId };
+  if (clientId) rawMatch.clientId = new mongoose.Types.ObjectId(clientId);
+  if (workId) rawMatch.workId = new mongoose.Types.ObjectId(workId);
+  if (quoteNumber) rawMatch.quoteNumber = Number(quoteNumber);
+  if (dateFrom || dateTo) {
+    rawMatch.createdAt = {};
+    if (dateFrom) rawMatch.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const endOfDay = new Date(dateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      rawMatch.createdAt.$lte = endOfDay;
+    }
+  }
+
   const pipeline = [
     {
-      $match: {
-        workspaceId: workspaceObjectId,
-      },
+      $match: rawMatch,
     },
     {
       $lookup: {
@@ -164,6 +218,32 @@ export default async function Page({ searchParams, params }) {
     pipeline.push({ $match: { createdAt: { $gte: startOfMonth } } });
   }
 
+  if (status !== "all") {
+    // Orçamentos antigos não têm o campo status (feature adicionada depois) —
+    // a UI trata a ausência do campo como "pendente", então o filtro precisa
+    // fazer o mesmo para não escondê-los.
+    pipeline.push({
+      $match:
+        status === "pendente"
+          ? { $or: [{ status: "pendente" }, { status: { $exists: false } }] }
+          : { status },
+    });
+  }
+
+  if (totalMin || totalMax) {
+    const range = {};
+    if (totalMin) range.$gte = Number(totalMin);
+    if (totalMax) range.$lte = Number(totalMax);
+    pipeline.push({ $match: { total: range } });
+  }
+
+  if (itemsMin || itemsMax) {
+    const range = {};
+    if (itemsMin) range.$gte = Number(itemsMin);
+    if (itemsMax) range.$lte = Number(itemsMax);
+    pipeline.push({ $match: { itemCount: range } });
+  }
+
   if (searchConditions && searchConditions.length > 0) {
     pipeline.push({
       $match: {
@@ -190,6 +270,7 @@ export default async function Page({ searchParams, params }) {
               deliveryTerm: 1,
               validityDays: 1,
               taxIncluded: 1,
+              status: 1,
               total: 1,
               itemCount: 1,
               createdAt: 1,
@@ -252,6 +333,18 @@ export default async function Page({ searchParams, params }) {
       order={order}
       direction={direction}
       filter={filter}
+      status={status}
+      advancedFilters={{
+        clientId: clientId || "",
+        workId: workId || "",
+        quoteNumber: quoteNumber || "",
+        totalMin: totalMin || "",
+        totalMax: totalMax || "",
+        itemsMin: itemsMin || "",
+        itemsMax: itemsMax || "",
+        dateFrom: dateFrom || "",
+        dateTo: dateTo || "",
+      }}
       locale={locale}
     />
   );

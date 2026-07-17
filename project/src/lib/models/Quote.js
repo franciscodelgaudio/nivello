@@ -53,6 +53,11 @@ const QuotesSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    status: {
+        type: String,
+        enum: ["pendente", "em_analise", "aprovado"],
+        default: "pendente",
+    },
 }, {
     timestamps: true,
 })

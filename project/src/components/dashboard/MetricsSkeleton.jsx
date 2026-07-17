@@ -26,6 +26,11 @@ export function MetricsSkeleton() {
           ))}
         </div>
       </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-72 rounded-[var(--radius-lg)]" />
+        <Skeleton className="h-72 rounded-[var(--radius-lg)]" />
+      </div>
     </main>
   );
 }

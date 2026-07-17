@@ -84,14 +84,17 @@
   --neutral-950: #10171c;
 
   --success-50: #e9f8ef;
+  --success-500: #12a150;
   --success-600: #0e8043;
   --success-700: #0c6637;
   --warning-50: #fdf4e3;
+  --warning-500: #e08c0b;
   --warning-600: #b96f07;
   --danger-50: #fdecec;
   --danger-500: #e5484d;
   --danger-600: #c93b40;
   --info-50: #eaf2fc;
+  --info-500: #2e7dd1;
   --info-600: #2364ac;
 
   /* ---- Semantic aliases used directly in product code ---- */
@@ -192,6 +195,36 @@
   --sidebar-accent-foreground: var(--neutral-50);
   --sidebar-border: var(--teal-900);
   --sidebar-ring: var(--teal-400);
+
+  /* ---- Nivello semantic aliases (dark) ---- */
+  --text-strong: var(--neutral-50);
+  --text-body: var(--neutral-300);
+  --text-muted: var(--neutral-400);
+  --text-subtle: var(--neutral-500);
+  --text-brand: var(--teal-400);
+
+  --surface-page: var(--neutral-950);
+  --surface-card: var(--neutral-900);
+  --surface-hover: var(--neutral-800);
+
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-default: rgba(255, 255, 255, 0.16);
+
+  --pill-bg: var(--neutral-800);
+  --pill-active-bg: var(--neutral-50);
+  --pill-active-fg: var(--neutral-900);
+
+  --work-planned: var(--neutral-400);
+  --work-planned-bg: var(--neutral-800);
+  --work-active: var(--teal-400);
+  --work-active-bg: var(--teal-900);
+  --work-late: var(--danger-500);
+  --work-late-bg: color-mix(in oklch, var(--danger-600), black 70%);
+
+  --success-600: var(--success-500);
+  --warning-600: var(--warning-500);
+  --info-600: var(--info-500);
+  --danger-600: var(--danger-500);
 }
 
 @layer base {

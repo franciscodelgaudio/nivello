@@ -14,6 +14,11 @@ const ORDER_VALUES = ["name", "address", "createdAt"];
 const DIRECTION_VALUES = ["asc", "desc"];
 const FILTER_VALUES = ["all", "active", "inactive"];
 
+const numberParam = z
+  .string()
+  .optional()
+  .refine((val) => !val || /^\d+(\.\d+)?$/.test(val), { message: "Valor inválido" });
+
 const querySchema = z.object({
   search: z
     .string()
@@ -38,6 +43,10 @@ const querySchema = z.object({
   order: z.enum(ORDER_VALUES).optional().default("name"),
   direction: z.enum(DIRECTION_VALUES).optional().default("asc"),
   filter: z.enum(FILTER_VALUES).optional().default("all"),
+  valueMin: numberParam,
+  valueMax: numberParam,
+  activeWorksMin: numberParam,
+  activeWorksMax: numberParam,
 });
 
 export default async function Page({ searchParams, params }) {
@@ -70,7 +79,8 @@ export default async function Page({ searchParams, params }) {
   const queryResult = querySchema.safeParse(await searchParams);
   if (!queryResult.success) return notFound();
 
-  const { search, page, order, direction, filter } = queryResult.data;
+  const { search, page, order, direction, filter, valueMin, valueMax, activeWorksMin, activeWorksMax } =
+    queryResult.data;
 
   const searchTerms = search
     ? search
@@ -181,6 +191,20 @@ export default async function Page({ searchParams, params }) {
     pipeline.push({ $match: { activeWorkCount: 0 } });
   }
 
+  if (valueMin || valueMax) {
+    const range = {};
+    if (valueMin) range.$gte = Number(valueMin);
+    if (valueMax) range.$lte = Number(valueMax);
+    pipeline.push({ $match: { totalValue: range } });
+  }
+
+  if (activeWorksMin || activeWorksMax) {
+    const range = {};
+    if (activeWorksMin) range.$gte = Number(activeWorksMin);
+    if (activeWorksMax) range.$lte = Number(activeWorksMax);
+    pipeline.push({ $match: { activeWorkCount: range } });
+  }
+
   if (searchConditions && searchConditions.length > 0) {
     pipeline.push({
       $match: {
@@ -250,6 +274,12 @@ export default async function Page({ searchParams, params }) {
       order={order}
       direction={direction}
       filter={filter}
+      advancedFilters={{
+        valueMin: valueMin || "",
+        valueMax: valueMax || "",
+        activeWorksMin: activeWorksMin || "",
+        activeWorksMax: activeWorksMax || "",
+      }}
       locale={locale}
     />
   );
