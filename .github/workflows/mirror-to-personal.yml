@@ -1,0 +1,43 @@
+name: Espelhar para repo pessoal (deploy Vercel)
+
+# Roda sempre que o triad muda: push em qualquer branch/tag, criacao ou
+# delecao de branch/tag. workflow_dispatch permite disparar manualmente.
+on:
+  push:
+    branches: ['**']
+    tags: ['**']
+  create:
+  delete:
+  workflow_dispatch:
+
+# Impede duas execucoes fazendo push --mirror ao mesmo tempo.
+concurrency:
+  group: mirror-to-personal
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    # Trava de seguranca: so roda no repositorio de ORIGEM (triad).
+    # Se este arquivo for espelhado para o repo pessoal, la ele nao executa.
+    if: github.repository == 'triad-solucoes-inteligentes/nivello'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clonar espelho do triad
+        run: |
+          git clone --mirror \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            repo.git
+
+      - name: Remover refs internos de Pull Request (read-only no GitHub)
+        working-directory: repo.git
+        run: |
+          git for-each-ref --format='%(refname)' refs/pull/ \
+            | xargs -r -n1 git update-ref -d
+
+      - name: Enviar (push --mirror) para o repo pessoal
+        working-directory: repo.git
+        run: |
+          git push --mirror \
+            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/franciscodelgaudio/nivello.git"
